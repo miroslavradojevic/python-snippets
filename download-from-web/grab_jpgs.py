@@ -1,4 +1,12 @@
-# https://dzone.com/articles/simple-examples-of-downloading-files-using-python
+# download set of jpg files:
+# https://ufdcimages.uflib.ufl.edu/AA/00/01/36/43/00001/00000.jpg
+# https://ufdcimages.uflib.ufl.edu/AA/00/01/36/43/00001/00001.jpg
+# https://ufdcimages.uflib.ufl.edu/AA/00/01/36/43/00001/00002.jpg
+# ...
+# https://ufdcimages.uflib.ufl.edu/AA/00/01/36/43/00001/00049.jpg
+# Download each file from URL using requests package and save as 00000.jpg - 00049.jpg in directory
+# indications on how to concatenate them into single pdf with each image corresponding to a page
+# Help: https://dzone.com/articles/simple-examples-of-downloading-files-using-python
 import requests
 import os
 import time
@@ -29,6 +37,6 @@ for i in range(50):
 # should be 9.24+
 # https://askubuntu.com/questions/1081895/trouble-with-batch-conversion-of-png-to-pdf-using-convert
 
-# cancatenate jpegs into pdf
+# concatenate jpegs into pdf
 # $ convert 00*.jpg book.pdf
 
