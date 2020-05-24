@@ -1,10 +1,10 @@
-# download set of jpg files:
+# Download set of JPG files
 # https://ufdcimages.uflib.ufl.edu/AA/00/01/36/43/00001/00000.jpg
 # https://ufdcimages.uflib.ufl.edu/AA/00/01/36/43/00001/00001.jpg
 # https://ufdcimages.uflib.ufl.edu/AA/00/01/36/43/00001/00002.jpg
 # ...
 # https://ufdcimages.uflib.ufl.edu/AA/00/01/36/43/00001/00049.jpg
-# Download each file from URL using requests package and save as 00000.jpg - 00049.jpg in directory
+# Download each file from its URL using requests package and save as 00000.jpg - 00049.jpg in directory
 # indications on how to concatenate them into single pdf with each image corresponding to a page
 # Help: https://dzone.com/articles/simple-examples-of-downloading-files-using-python
 import requests
