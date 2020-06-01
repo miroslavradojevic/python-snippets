@@ -8,8 +8,8 @@ config = rs.config()
 config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
 config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
-# Start streaming
-pipeline.start(config)
+# Start pipeline with defined configuration
+cfg = pipeline.start(config)
 
 try:
     while True:
@@ -34,6 +34,7 @@ try:
         # Show images
         cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
         cv2.imshow('RealSense', images)
+
         if cv2.waitKey(1) & 0xFF == 27:
             break
 
