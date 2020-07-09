@@ -20,6 +20,7 @@ from jetbot import Robot
 # libavcodec-dev
 
 # libfreetype6-dev
+# sudo pip3 install pygame
 
 pygame.init()
 pygame.joystick.init()
