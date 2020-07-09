@@ -32,6 +32,8 @@ if pygame.joystick.get_count() == 0:
 joy = pygame.joystick.Joystick(0)
 joy.init()
 
+#screen = pygame.display.set_mode((400, 300))
+
 joystick_info = dict()
 joystick_info["ID"] = joy.get_id()
 joystick_info["Name"] = joy.get_name()
@@ -116,7 +118,6 @@ if __name__ == "__main__":
         # joystic_command has "exit", "axis_0" and "axis_1" fields
         if "exit" in joystic_command:
             if joystic_command["exit"]:
-                robot.stop()
                 break  # get out of the loop with button 3
 
         if "axis_0" in joystic_command:
@@ -130,7 +131,7 @@ if __name__ == "__main__":
         motor_right = motor_coeff_right * motor_coeff_forward * max_velocity
 
         # set speeds to robot wheels
-        robot.set_motors(motor_left, motor_right)
+        robot.set_motors(motor_right, motor_left)
         # robot.left_motor.value = motor_left
         # robot.right_motor.value = motor_right
 
@@ -139,4 +140,6 @@ if __name__ == "__main__":
 
 
 print("\nExiting...")
+robot.stop()
 pygame.joystick.quit()
+pygame.quit()
