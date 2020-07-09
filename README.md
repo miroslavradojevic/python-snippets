@@ -1,2 +1,2 @@
 # python-snippets
-Python snippets and smaller programs
+Python snippets and handy programs
