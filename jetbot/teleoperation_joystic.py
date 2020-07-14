@@ -3,8 +3,10 @@ import sys
 
 from jetbot import Robot
 
+###################################
 # install pygame dependencies
 # https://stackoverflow.com/questions/7652385/where-can-i-find-and-install-the-dependencies-for-pygame
+# install pygame dependencies
 # sudo apt-get install python-dev \
 # libsdl-image1.2-dev \
 # libsdl-mixer1.2-dev \
@@ -18,9 +20,20 @@ from jetbot import Robot
 # libswscale-dev \
 # libavformat-dev \
 # libavcodec-dev
-
+# also try:
 # libfreetype6-dev
+# install pygame
 # sudo pip3 install pygame
+
+###################################
+# basic robot controls
+# from jetbot import Robot
+# import time
+# robot = Robot()
+# robot.left(speed=0.3) # robot.forward(0.3) robot.backward(0.3)
+# time.sleep(0.2)
+# robot.stop()
+
 
 pygame.init()
 pygame.joystick.init()
