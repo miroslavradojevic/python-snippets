@@ -1,7 +1,8 @@
-# Use opencv to connect to USB camera
+# Use opencv to capture information from (usb, web) camera
+# use python opencv to access camera image and show/save it
 import cv2
 
-# Connects to your computer's default camera
+# Connects to computer default camera
 cap = cv2.VideoCapture(0)
 
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))

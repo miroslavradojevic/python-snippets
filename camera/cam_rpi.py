@@ -72,9 +72,6 @@ class Camera(SingletonConfigurable):
 if __name__ == '__main__':
     dir_path = os.path.join(expanduser("~"), os.path.basename(__file__))
     
-    # ~ if True:
-        # ~ sys.exit(0)
-
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     
