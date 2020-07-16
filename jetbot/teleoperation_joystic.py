@@ -101,6 +101,7 @@ def motor_coeff_forward_compute(command_value):
 
 
 def show_usage():
+    print("Usage: python3 " + __file__ + " nsec")
     print("Use joystick to move robot")
     print("Axis 0: left - right")
     print("Axis 1: forward - backward")
@@ -116,6 +117,7 @@ if __name__ == "__main__":
     motor_coeff_left = 0
     motor_coeff_right = 0
     motor_coeff_forward = 0
+    
     try:
         max_velocity = float(sys.argv[1])
     except ValueError:
@@ -152,7 +154,7 @@ if __name__ == "__main__":
         sys.stdout.flush()
 
 
-print("\nExiting...")
-robot.stop()
-pygame.joystick.quit()
-pygame.quit()
+    print("\nExiting...")
+    robot.stop()
+    pygame.joystick.quit()
+    pygame.quit()
