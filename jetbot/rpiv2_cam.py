@@ -16,7 +16,7 @@ def is_number(s):
     except ValueError:
         return False
 
-class Camera():
+class CameraRPi_v2():
 
     capture_width = 3280
     capture_height = 2464
@@ -98,13 +98,14 @@ if __name__ == "__main__":
         logging.info("Make output directory {}".format(d_out))
         os.makedirs(d_out)
     
-    cam = Camera()
+    cam = CameraRPi_v2()
 
     try:
         while True:
             img_path = os.path.join(d_out, 'frame_'+ datetime.now().strftime("%Y%m%d-%H%M%S-%f") +'.jpg')
             logging.info("Capture camera value and write to {}".format(img_path))
             cv2.imwrite(img_path, cam.value)
+            print(img_path)
             time.sleep(secs)
     except KeyboardInterrupt:
         logging.info("Keyboard interrupt")
