@@ -4,3 +4,4 @@ venv
 *.h5
 *.jpg
 .vscode/
+__pycache__
