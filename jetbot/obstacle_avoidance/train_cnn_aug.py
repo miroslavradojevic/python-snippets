@@ -37,7 +37,10 @@ plt.imshow(img)
 plt.imshow(image_gen.random_transform(img))
 # plt.show()
 
-model = model_224(1, False)
+model = model_224(1)
+
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
 batch_size = 64
 
 train_image_gen = image_gen.flow_from_directory(train_path,
