@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Download .mp3 podcast files of Radio Belgrade show Govori da bih te video (Speak so that I can see you)
 # grab all mp3s and save them with parsed name and date to the output folder
 import requests
