@@ -10,7 +10,7 @@ height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 # MACOS AND LINUX: *'XVID' (MacOS users may want to try VIDX as well)
 # WINDOWS *'VIDX'
-writer = cv2.VideoWriter("capture_" + time.strftime("%Y%m%d-%H%M%S") + ".mp4", cv2.VideoWriter_fourcc(*'VIDX'), 30, (width, height))
+writer = cv2.VideoWriter("capture_" + time.strftime("%Y%m%d-%H%M%S") + ".mp4", cv2.VideoWriter_fourcc(*'XVID'), 15, (width, height))
 
 while True:
     # Capture frame-by-frame
