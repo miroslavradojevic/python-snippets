@@ -5,7 +5,7 @@ import pandas as pd
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.callbacks import EarlyStopping
 from matplotlib.image import imread
-from train_cnn import model_224
+from train import cnn8
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -37,7 +37,7 @@ plt.imshow(img)
 plt.imshow(image_gen.random_transform(img))
 # plt.show()
 
-model = model_224(1)
+model = cnn8(1)
 
 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
