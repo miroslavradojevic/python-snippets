@@ -157,15 +157,11 @@ print(classification_report(test_image_gen.classes,predictions))
 confusion_matrix(test_image_gen.classes,predictions)
 # # Predicting on an Image
 # Your file path will be different!
-para_cell
 my_image = image.load_img(para_cell,target_size=image_shape)
-my_image
 type(my_image)
 my_image = image.img_to_array(my_image)
 type(my_image)
-my_image.shape
 my_image = np.expand_dims(my_image, axis=0)
-my_image.shape
 model.predict(my_image)
 train_image_gen.class_indices
 test_image_gen.class_indices

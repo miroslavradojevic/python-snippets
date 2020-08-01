@@ -41,7 +41,6 @@ model.add(Dense(256, activation='relu'))
 model.add(Dense(10, activation='softmax'))
 model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
 
-# model.summary()
 early_stop = EarlyStopping(monitor='val_loss',patience=3)
 model.fit(x_train,y_cat_train,epochs=15,validation_data=(x_test,y_cat_test),callbacks=[early_stop])
 # Careful, don't overwrite our file!
