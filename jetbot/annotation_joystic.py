@@ -8,14 +8,13 @@ import os
 import time
 import cv2
 from datetime import datetime
-from rpiv2_cam import CameraRPi_v2
+from jetbot.cam_rpiv2 import CameraRPiv2
 
 pygame.init()
 pygame.joystick.init()
 
 if pygame.joystick.get_count() == 0:
-    print("No joystics were found")
-    sys.exit()
+    exit("No joystics were found")
 
 joy = pygame.joystick.Joystick(0)
 joy.init()
@@ -63,7 +62,7 @@ if __name__ == "__main__":
     d_out_1 = os.path.join(d_name, f_name, "1")
     create_dir(d_out_1)
 
-    cam = CameraRPi_v2()
+    cam = CameraRPiv2()
 
     try:
         while True:
