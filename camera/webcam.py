@@ -2,7 +2,7 @@
 # use python opencv to access camera image and show/save it
 import cv2
 
-# Connects to computer default camera
+# Connect to computer default camera
 cap = cv2.VideoCapture(0)
 
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -10,7 +10,6 @@ height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 print("frame dimensions, w=%d, h=%d" % (width, height))
 
 while True:
-
     # Capture frame-by-frame
     ret, frame = cap.read()
 
