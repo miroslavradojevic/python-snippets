@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.image import imread
 import time
+import json
 import os
 from os.path import join, dirname, basename, isfile, exists
 from sklearn.model_selection import train_test_split
@@ -20,10 +21,9 @@ from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.vgg19 import VGG19
 # from tensorflow.keras.applications.resnet50 import ResNet50
 
-pickle_file = "/media/miro/WD/jetbot_obstacle_avoidance/data_224.pckl"
 batch_size = 32
-vgg16_top_layers_train = 2
-max_epochs = 45
+vgg16_top_layers_train = 1
+max_epochs = 50
 
 def cnn8(input_shape, n_filter_out):
     model = Sequential()
@@ -109,9 +109,6 @@ def read_shape_first_train_image(data_path):
 
 
 if __name__ == "__main__":
-    # example_data_file_path = "/media/miro/WD/jetbot_obstacle_avoidance/data_224.pckl"
-    # example_data_dir_path = "/media/miro/WD/jetbot_obstacle_avoidance/data_224_pckl_0.4"
-
     parser = argparse.ArgumentParser(description="Train obstacle avoidance data recorded from robot webcam.",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("method", help="Model used, choose among CNN8, VGG16, VGG19", type=str)
@@ -129,7 +126,6 @@ if __name__ == "__main__":
 
     if exists(args.data_path):
         if isfile(args.data_path):
-            # file os.path.splitext(file)[1] == ".mp3"
             with open(args.data_path, "rb") as f:
                 X, y, name_to_idx, idx_to_name = pickle.load(f)
 
@@ -203,10 +199,10 @@ if __name__ == "__main__":
 
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-    early_stop = EarlyStopping(monitor='val_loss', patience=3)
+    early_stop = EarlyStopping(monitor='val_loss', patience=5)
 
     if isfile(args.data_path):
-        model.fit(X_train, y_cat_train, validation_data=(X_test, y_cat_test), epochs=max_epochs, batch_size=batch_size) # , callbacks=[early_stop]
+        model.fit(X_train, y_cat_train, validation_data=(X_test, y_cat_test), epochs=max_epochs, batch_size=batch_size, callbacks=[early_stop])
     else:
         model.fit(train_image_gen, validation_data=test_image_gen, epochs=max_epochs, batch_size=batch_size) # , callbacks=[early_stop]
 
@@ -215,6 +211,14 @@ if __name__ == "__main__":
 
     if model is not None:
         model.save(join(out_dir, args.method + '.h5'))
+
+        f = open(join(out_dir, 'idx_to_name.json'), "w")
+        f.write(json.dumps(idx_to_name))
+        f.close()
+
+        f = open(join(out_dir, 'name_to_idx.json'), "w")
+        f.write(json.dumps(name_to_idx))
+        f.close()
 
         losses = pd.DataFrame(model.history.history)
 
