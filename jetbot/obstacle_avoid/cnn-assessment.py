@@ -239,17 +239,7 @@ y_cat_test.shape
 
 
 y_cat_test[0]
-
-
-# In[28]:
-
-
 predictions[0]
-
-
-# In[29]:
-
-
 y_test
 
 
@@ -257,6 +247,3 @@ y_test
 
 
 print(classification_report(y_test,predictions))
-
-
-# # Great Job!
