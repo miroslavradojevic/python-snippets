@@ -21,14 +21,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if not exists(args.model):
-        exit(args.model + "does not exist")
-
-    if not isfile(args.model):
-        exit(args.model + "is not a file")
-
-    if not splitext(args.model)[1] == ".h5":
-        exit(args.model + "needs to have .h5 extension")
+    if not exists(args.model) or not isfile(args.model) or not splitext(args.model)[1] == ".h5":
+        exit(args.model + "error: does not exist, is not a file or needs to have .h5 extension")
 
     model = load_model(args.model)
     input_shape = model.layers[0].input_shape
@@ -42,13 +36,13 @@ if __name__ == "__main__":
     # period_mean = None
     # period_count = 0
     try:
-
         while True:
-            cap = cv2.resize(cam.value, input_shape[1:3], interpolation=cv2.INTER_CUBIC)
-            cap = np.expand_dims(cap, axis=0)
+            im = cv2.resize(cam.value, input_shape[1:3], interpolation=cv2.INTER_CUBIC)
+            im = np.expand_dims(im, axis=0)
+            im = im / 255.0
 
             t1 = time.time()
-            preds =  model.predict(cap)
+            preds =  model.predict(im)
             t2 = time.time()
 
             # if period_mean is None:
@@ -58,13 +52,12 @@ if __name__ == "__main__":
             #     period_count += 1
             #     period_mean = period_mean * ((period_count-1) / period_count) + (t2-t1) / period_count
 
-            print(1./(t2 - t1))
+            print(1./(t2 - t1), ",")
 
             if np.argmax(preds, axis=1) == 0:
                 robot.set_motors(0.35, 0.35)
             else:
                 robot.stop()
 
-            # time.sleep(0.001)
     except KeyboardInterrupt:
         cam.stop()
