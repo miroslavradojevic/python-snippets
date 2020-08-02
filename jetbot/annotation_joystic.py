@@ -1,14 +1,16 @@
+#!/usr/bin/env python
 # training data for collision detection
 # use joystick and RPi_v2 camera
 # button left/right would save current camera capture as negative/positive (there is obstacle/no obstacle found)
-
 import pygame
 import sys
 import os
 import time
 import cv2
 from datetime import datetime
-from jetbot.cam_rpiv2 import CameraRPiv2
+from matplotlib.image import imread
+import numpy as np
+from cam_rpiv2 import CameraRPiv2
 
 pygame.init()
 pygame.joystick.init()
@@ -65,6 +67,7 @@ if __name__ == "__main__":
     cam = CameraRPiv2()
 
     try:
+        print("Press L/R joystick button...\n")
         while True:
             joystick_events = pygame.event.get()
             joystic_command = process_joystic_events(joystick_events)
@@ -74,11 +77,12 @@ if __name__ == "__main__":
                 sys.stdout.flush()
 
                 if "exit" in joystic_command:
-                    print("")
+                    print("\nExiting...")
                     break  # get out of the loop with button 3
 
                 if "L" in joystic_command:
                     img_path = os.path.join(d_out_0, datetime.now().strftime("%Y%m%d-%H%M%S-%f") +'.jpg')
+                    # cam.value <class 'numpy.ndarray'> (2464, 3280, 3) uint8 0 255
                     cv2.imwrite(img_path, cam.value)
                     print("\n", img_path)
 
@@ -87,7 +91,7 @@ if __name__ == "__main__":
                     cv2.imwrite(img_path, cam.value)
                     print("\n", img_path)
 
-            time.sleep(0.01)
+            time.sleep(0.001)
 
     except KeyboardInterrupt:
         cam.stop()

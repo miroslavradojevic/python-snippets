@@ -8,12 +8,14 @@ import time
 from os.path import splitext, exists, isfile, join, dirname
 from tensorflow.keras.models import load_model
 import tensorflow as tf
+import numpy as np
 sys.path.insert(1, join(sys.path[0], dirname(sys.path[0])))
 from cam_rpiv2 import CameraRPiv2
+from jetbot import Robot
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Read camera image and classify whether it is obstacle. Use RPiv2 camera recording to feed classification.",
+        description="Read camera image and classify whether it is obstacle. Use RPiv2 capture to feed classification.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("model", help="Path to h5 model", type=str)
 
@@ -29,18 +31,40 @@ if __name__ == "__main__":
         exit(args.model + "needs to have .h5 extension")
 
     model = load_model(args.model)
-    print(model.layers[0].input_shape)
-    print(type(model.layers[0].input_shape))
+    input_shape = model.layers[0].input_shape
+    # print(input_shape, input_shape[1:3], type(input_shape[1:3]), flush=True)
 
     cam = CameraRPiv2()
+    print("Camera initialized. Capturing...", flush=True)
 
+    robot = Robot()
+    print("Robot initialized...", flush=True)
+    # period_mean = None
+    # period_count = 0
     try:
+
         while True:
-            # img_path = join(d_out, 'frame_'+ datetime.now().strftime("%Y%m%d-%H%M%S-%f") +'.jpg')
-            # logging.info("Capture camera value and write to {}".format(img_path))
-            # cv2.imwrite(img_path, cam.value)
-            # print(img_path)
-            print(type(cam.value), cam.value.shape)
-            time.sleep(0.001)
+            cap = cv2.resize(cam.value, input_shape[1:3], interpolation=cv2.INTER_CUBIC)
+            cap = np.expand_dims(cap, axis=0)
+
+            t1 = time.time()
+            preds =  model.predict(cap)
+            t2 = time.time()
+
+            # if period_mean is None:
+            #     period_mean = t2-t1
+            #     period_count = 1
+            # else:
+            #     period_count += 1
+            #     period_mean = period_mean * ((period_count-1) / period_count) + (t2-t1) / period_count
+
+            print(1./(t2 - t1))
+
+            if np.argmax(preds, axis=1) == 0:
+                robot.set_motors(0.35, 0.35)
+            else:
+                robot.stop()
+
+            # time.sleep(0.001)
     except KeyboardInterrupt:
         cam.stop()

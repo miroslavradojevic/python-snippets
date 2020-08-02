@@ -16,8 +16,7 @@ def is_number(s):
     except ValueError:
         return False
 
-class CameraRPiv2():
-
+class CameraRPiv2(): # cap_w=3280, cap_h=2464
     capture_width = 3280
     capture_height = 2464
     fps = 21
@@ -25,7 +24,7 @@ class CameraRPiv2():
     height = 2464 # // 2
     
     def __init__(self, *args, **kwargs):
-        # super(Camera, self).__init__(*args, **kwargs)
+        # super(CameraRPiv2, self).__init__(*args, **kwargs)
         # self.value = np.empty((self.height, self.width, 3), dtype=np.uint8)
         try:
             self.cap = cv2.VideoCapture(self._gst_str(), cv2.CAP_GSTREAMER)
@@ -102,11 +101,13 @@ if __name__ == "__main__":
 
     try:
         while True:
-            img_path = os.path.join(d_out, 'frame_'+ datetime.now().strftime("%Y%m%d-%H%M%S-%f") +'.jpg')
+            # img_path = os.path.join(d_out_0, datetime.now().strftime("%Y%m%d-%H%M%S-%f") + '.jpg')
+            # img_path = os.path.join(d_out, 'frame_'+ datetime.now().strftime("%Y%m%d-%H%M%S-%f") +'.jpg')
+            img_path = os.path.join(d_out, datetime.now().strftime("%Y%m%d-%H%M%S-%f") +'.jpg')
             logging.info("Capture camera value and write to {}".format(img_path))
             cv2.imwrite(img_path, cam.value)
             print(img_path)
-            print(type(cam.value), cam.value.shape)
+            # <class 'numpy.ndarray'> (2464, 3280, 3)
             time.sleep(secs)
     except KeyboardInterrupt:
         logging.info("Keyboard interrupt")

@@ -41,8 +41,12 @@ if __name__ == "__main__":
                 if os.path.splitext(f)[1] == ".jpg":
                     print(os.path.join(data_dir, c, f))
                     im = imread(os.path.join(data_dir, c, f))
+                    # im: <class 'numpy.ndarray'> (2464, 3280, 3) uint8 0 255
+
                     # 2 ways to resize image: opencv and scikit-image
                     im = cv2.resize(im, (size, size), interpolation=cv2.INTER_CUBIC)
+                    # im: <class 'numpy.ndarray'> (224, 224, 3) uint8 0 255
+
                     X.append(im)
                     y.append(class_count)
 
