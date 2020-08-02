@@ -6,21 +6,21 @@ import pickle
 import numpy as np
 from matplotlib.image import imread
 
-data_dir = "/media/miro/WD/jetbot_obstacle_avoidance"
-
+data_dir = "/media/miro/WD/jetbot_obstacle_avoidance/data"
+prefix = "data1"
 size = 224
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        data_dir = sys.argv[1]
-        if not os.path.isdir(data_dir):
-            sys.exit(data_dir + " is not a directory")
+    # if len(sys.argv) == 2:
+    #     data_dir = sys.argv[1]
+    if not os.path.isdir(data_dir):
+        exit(data_dir + " is not a directory")
 
-    if len(sys.argv) == 3:
-        try:
-            size = int(sys.argv[2])
-        except ValueError:
-            sys.exit(sys.argv[2] + " is not integer value")
+    # if len(sys.argv) == 3:
+    #     try:
+    #         size = int(sys.argv[2])
+    #     except ValueError:
+    #         sys.exit(sys.argv[2] + " is not integer value")
 
     if not os.path.exists(data_dir):
         sys.exit(data_dir + " does not exist")
@@ -60,6 +60,6 @@ if __name__ == "__main__":
     print("y", y[0].dtype, y.shape)
 
     # pickle data
-    with open(os.path.join(data_dir, 'data_' + str(size) + '.pckl'), 'wb') as f:
+    with open(os.path.join(data_dir, prefix + "_" + str(size) + '.pckl'), 'wb') as f:
         pickle.dump([X, y, name_to_idx, idx_to_name], f)
         print("Exported to ", f.name)
