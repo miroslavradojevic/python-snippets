@@ -4,10 +4,10 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# recordings_dir = "/Users/miroslav/source/python-snippets/compare_trajectories/nsh_indoor_outdoor.bag"
-# recordings_dir = "/Users/miroslav/source/python-snippets/compare_trajectories/nsh_indoor_outdoor.bag/aloam"
-recordings_dir = "/Users/miroslav/source/python-snippets/compare_trajectories/InLiDa-sequence_4"
-# recordings_dir = "/Users/miroslav/source/python-snippets/compare_trajectories/temposan-log_fri_02.bag"
+# recordings_dir = "/Users/miroslav/source/python-snippets/compare-trajectories/nsh_indoor_outdoor.bag"
+# recordings_dir = "/Users/miroslav/source/python-snippets/compare-trajectories/nsh_indoor_outdoor.bag/aloam"
+recordings_dir = "/compare-trajectories/InLiDa-sequence_4"
+# recordings_dir = "/Users/miroslav/source/python-snippets/compare-trajectories/temposan-log_fri_02.bag"
 
 # list csv files in recordings_dir
 csv_files = [f for f in os.listdir(recordings_dir) if f.endswith('.csv')]
