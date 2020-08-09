@@ -18,7 +18,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras import Model
 from tensorflow.keras.applications.vgg16 import VGG16
-from tensorflow.keras.applications.vgg19 import VGG19
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
 # from tensorflow.keras.applications.resnet50 import ResNet50
 
 batch_size = 32
@@ -99,6 +99,10 @@ def vgg16plus(input_shape, nr_filter_out, nr_trainable_top_layers):
 
     return model
 
+def mobilenetv2plus(input_shape, nr_filter_out, nr_trainable_top_layers):
+    mobilenet = MobileNetV2(include_top=False, weights="imagenet", input_shape=input_shape)
+
+
 
 def read_shape_first_train_image(data_path):
     train_path = join(data_path, "train")
@@ -111,7 +115,7 @@ def read_shape_first_train_image(data_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train obstacle avoidance data recorded from robot webcam.",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("method", help="Model used, choose among CNN8, VGG16, VGG19", type=str)
+    parser.add_argument("method", help="Model used, choose among CNN8, VGG16, MobileNetV2", type=str)
     parser.add_argument("data_path",
                         help="Path to pickle file with data: X, y, name_to_idx, idx_to_name, or path to directory with train and test subdirs",
                         type=str)
