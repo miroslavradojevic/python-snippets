@@ -152,11 +152,9 @@ def l0_smoothing(image_r, kappa=2.0, _lambda=2e-2):
         FS[:, :, :] = (FI + beta * FS) / denorm
 
         # inverse FFT to compute S + 1
-        # fft_s = time.time()
         S[:, :, 0] = np.float32((np.fft.ifft2(FS[:, :, 0])).real)
         S[:, :, 1] = np.float32((np.fft.ifft2(FS[:, :, 1])).real)
         S[:, :, 2] = np.float32((np.fft.ifft2(FS[:, :, 2])).real)
-        # fft_e = time.time()
         # step_2_fft += fft_e - fft_s
 
         # subproblem 2 end time
