@@ -27,6 +27,7 @@ with open(ptcloud_path) as f:
             line_vals = line.split(" ")
             if (len(line_vals) == 4):
                 data.append([float(i) for i in line_vals])
+
 print("found ", len(data), " points in LiDAR pointcloud")
 print(ptcloud_path)
 data = np.array(data)#.transpose()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Project point-cloud on a spherical panorama image
 # Input: point-cloud and spherical panorama
-# Output: projection
+# Output: pointcloud
 # Adjusted from matlab functions: https://drive.google.com/file/d/1aeYfmquaivnUWWTjJ6kBT1jtPEihr-1g/view?usp=sharing
 # Dataset: https://zenodo.org/record/2640062
 
