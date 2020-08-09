@@ -498,7 +498,7 @@ animate_results(P_values, Q, corresp_values, xlim=(-10, 35), ylim=(-10, 30))
 
 
 # # Using point to plane metric with Least Squares ICP
-# Point to point metric used before is not really the most optimal as can be seen above. It takes quite some iterations for the solution to converge. There is another metric which seems to work better. It is called "point to plane" metric. The idea here is that we still find the closest point, but the error is defined as a projection of the error onto the direction of the normal shot from the found point.
+# Point to point metric used before is not really the most optimal as can be seen above. It takes quite some iterations for the solution to converge. There is another metric which seems to work better. It is called "point to plane" metric. The idea here is that we still find the closest point, but the error is defined as a pointcloud of the error onto the direction of the normal shot from the found point.
 # 
 # To start, we need to compute the normals of the resulting cloud.
 # 
