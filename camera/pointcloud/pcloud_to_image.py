@@ -21,15 +21,11 @@ def xyz2pixel(pt_LB, w, h):
     r = np.sqrt(np.multiply(pt_LB[0, :], pt_LB[0, :]) + \
                 np.multiply(pt_LB[1, :], pt_LB[1, :]) + \
                 np.multiply(pt_LB[2, :], pt_LB[2, :]))
-    # print("r", type(r), r.shape)
     # uv of points
     th = np.arctan2(pt_LB[1, :], pt_LB[0, :])
     phi = np.arcsin(np.divide(pt_LB[2, :], r))
-    # print("th", type(th), th.shape)
     u = -1 / (2 * math.pi) * th + 0.5
     v = -1 / math.pi * phi + 0.5
-    # print("u", type(u), u.shape)
-    # print("v", type(v), v.shape)
     # Pixels of points
     pixel = np.vstack((u * w, v * h))
     # print("pixel", type(pixel), pixel.shape)
@@ -126,6 +122,7 @@ if __name__ == '__main__':
     translation = [args.tx, args.ty, args.tz]
 
     for i in range(start_idx, start_idx + args.indexInterval):
+
         locs_pix, img, _ = project_readout(data_path, i, rotation, translation)
 
         if locs_pix is not None:
