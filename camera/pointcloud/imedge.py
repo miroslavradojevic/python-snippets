@@ -5,7 +5,9 @@ import argparse
 from os.path import exists, basename
 from matplotlib.image import imread
 import cv2
+import os
 import numpy as np
+from os.path import splitext, join, dirname
 
 
 # Convert point-spread function to optical transfer function
@@ -140,12 +142,9 @@ def l0_smoothing(image_r, kappa=2.0, _lambda=2e-2):
         dyvp[1:N, :, :] = -(np.diff(v, 1, 0))
         normin = dxhp + dyvp
 
-        # fft_s = time.time()
         FS[:, :, 0] = np.fft.fft2(normin[:, :, 0])
         FS[:, :, 1] = np.fft.fft2(normin[:, :, 1])
         FS[:, :, 2] = np.fft.fft2(normin[:, :, 2])
-        # fft_e = time.time()
-        # step_2_fft += fft_e - fft_s
 
         # solve for S + 1 in Fourier domain
         denorm = 1 + beta * MTF;
@@ -155,7 +154,6 @@ def l0_smoothing(image_r, kappa=2.0, _lambda=2e-2):
         S[:, :, 0] = np.float32((np.fft.ifft2(FS[:, :, 0])).real)
         S[:, :, 1] = np.float32((np.fft.ifft2(FS[:, :, 1])).real)
         S[:, :, 2] = np.float32((np.fft.ifft2(FS[:, :, 2])).real)
-        # step_2_fft += fft_e - fft_s
 
         # subproblem 2 end time
         # e_time = time.time()
@@ -179,6 +177,7 @@ def l0_smoothing(image_r, kappa=2.0, _lambda=2e-2):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("path", help="Path to image", type=str)
+    parser.add_argument("kappa", )
     args = parser.parse_args()
     image_path = args.path
 
@@ -196,15 +195,17 @@ if __name__ == '__main__':
 
     # https://github.com/kjzhang/kzhang-cs205-l0-smoothing
     s_image = l0_smoothing(image_path, 2.0, 0.01)
-    print("1:", s_image.shape, type(s_image), s_image[0].dtype, np.min(s_image), np.max(s_image))
+    print(s_image.shape, type(s_image), s_image[0].dtype, np.min(s_image), np.max(s_image))
 
-    cv2.imwrite(basename(image_path) + "_l0_smooth.jpg", s_image)
+    prefix = join(dirname(image_path), basename(splitext(image_path)[0]))
+    # cv2.imwrite(prefix + "_l0_smooth.jpg", s_image)
 
     # https://theailearner.com/tag/non-max-suppression/
     # https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
     s_image = cv2.cvtColor(s_image, cv2.COLOR_BGR2GRAY).astype(np.uint8)
     # s_image = cv2.normalize(s_image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-    print("2:", s_image.shape, type(s_image), s_image[0].dtype, np.min(s_image), np.max(s_image))
+    # print(s_image.shape, type(s_image), s_image[0].dtype, np.min(s_image), np.max(s_image))
     edges = cv2.Canny(s_image, 50, 200, L2gradient=True)
-    print("3:", edges.shape, type(edges), edges[0].dtype, np.min(edges), np.max(edges))
-    cv2.imwrite(basename(image_path) + "_edges.jpg", edges)
+    # print(edges.shape, type(edges), edges[0].dtype, np.min(edges), np.max(edges))
+    cv2.imwrite(prefix + "_edges.jpg", edges)
+
