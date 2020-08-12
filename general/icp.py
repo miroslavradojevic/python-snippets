@@ -234,10 +234,6 @@ if True:
 # 
 # ### Working example
 # As we want to work with centered data and we will be iteratively centering the data, searching for rotation on centered data and uncentering the data at the end of each iteration. It is not the most elegant or efficient way, but it allows us to visualize the clouds nicer.
-
-# In[10]:
-
-
 def icp_svd(P, Q, iterations=10, kernel=lambda diff: 1.0):
     """Perform ICP using SVD."""
     center_of_Q, Q_centered = center_data(Q)
