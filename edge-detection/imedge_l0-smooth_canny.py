@@ -11,7 +11,7 @@ import cv2
 import os
 import numpy as np
 from os.path import splitext, join, dirname
-
+from matplotlib.image import imread
 
 # Convert point-spread function to optical transfer function
 def psf2otf(psf, outSize=None):
@@ -57,11 +57,14 @@ def circshift(A, shift):
 # Smooth using L0 gradient minimization
 def l0_smoothing(image_path, kappa=2.0, _lambda=2e-2):
     # Read image I
-    image = cv2.imread(image_path)
+    image = imread(image_path)# cv2.imread(image_path)
+    print(image.shape, type(image), image[0].dtype, np.min(image), np.max(image))
+
     # Validate image format
+    assert len(image.shape) == 3, "Error: input must be 3-channel RGB image"
+
     N, M, D = np.int32(image.shape)
-    assert D == 3, "Error: input must be 3-channel RGB image"
-    print("Processing{:d} x {:d} RGB image".format(M, N))
+    print("Processing {:d} x {:d} RGB image".format(M, N))
 
     # Initialize S as I
     S = np.float32(image) / 256
@@ -97,7 +100,6 @@ def l0_smoothing(image_path, kappa=2.0, _lambda=2e-2):
 
     # Iterate until desired convergence in similarity
     while beta < beta_max:
-        # if verbose:
         print("iteration {:d}".format(iteration))
 
         ### Step 1: estimate (h, v) subproblem
@@ -160,7 +162,7 @@ def edge_detection(image_path, l0_sth_kappa, l0_sth_lambda, canny_min_val, canny
     # https://theailearner.com/tag/non-max-suppression/
     # https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
     im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY).astype(np.uint8)
-    im = cv2.normalize(im, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    # im = cv2.normalize(im, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
     print(im.shape, type(im), im[0].dtype, np.min(im), np.max(im))
 
     return cv2.Canny(im, canny_min_val, canny_max_val, L2gradient=True)
@@ -173,15 +175,16 @@ if __name__ == '__main__':
     parser.add_argument("--lambda_smooth", help="Lambda used for L0 smoothing", type=float, default=2e-2)
     parser.add_argument("--min_val", help="Canny hysteresis min value", type=float, default=50)
     parser.add_argument("--max_val", help="Canny hysteresis max value", type=float, default=200)
-    parser.add_argument()
     args = parser.parse_args()
 
     # img_path = join(dir_path, "images", "pano", "image{:04d}.png".format(readout_idx))
     if not exists(args.path):
         exit(args.path, " could not be found")
 
-    edges = edge_detection(args.path, args.kappa_smooth, args._lambda_smooth, args.min_val, args.max_val)
+    edges = edge_detection(args.path, args.kappa_smooth, args.lambda_smooth, args.min_val, args.max_val)
     print(edges.shape, type(edges), edges[0].dtype, np.min(edges), np.max(edges))
 
-    cv2.imwrite(get_prefix(args.path) + "_edges.jpg", edges)
+    edges_path = get_prefix(args.path) + "_edges.jpg"
+    cv2.imwrite(edges_path, edges)
+    print("Edges saved to {}".format(edges_path))
 
