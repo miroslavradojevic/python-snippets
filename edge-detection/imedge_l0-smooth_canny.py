@@ -1,9 +1,12 @@
 #!/usr/bin/env python
-# Compute edge score from given image
+# Compute edge score for given image
+# 1. Smooth using L0 gradient minimization method
+# https://github.com/kjzhang/kzhang-cs205-l0-smoothing
+# 2. Canny
+# https://en.wikipedia.org/wiki/Canny_edge_detector
 
 import argparse
 from os.path import exists, basename
-from matplotlib.image import imread
 import cv2
 import os
 import numpy as np
@@ -47,23 +50,18 @@ def prepare_psf(psf, outSize=None, dtype=None):
 
 # Circularly shift array
 def circshift(A, shift):
-    # print(type(shift.size), shift.size)
     for i in range(shift.size):
-        # print(i, type(i))
-        # print(type(shift), len(shift), shift.shape)
-        # print(type(A), len(A), A.shape)
-        # print(shift[i])
         A = np.roll(A, np.round(shift[i]).astype(np.int32), axis=i)
     return A
 
-
-def l0_smoothing(image_r, kappa=2.0, _lambda=2e-2):
+# Smooth using L0 gradient minimization
+def l0_smoothing(image_path, kappa=2.0, _lambda=2e-2):
     # Read image I
-    image = cv2.imread(image_r)
+    image = cv2.imread(image_path)
     # Validate image format
     N, M, D = np.int32(image.shape)
     assert D == 3, "Error: input must be 3-channel RGB image"
-    print("Processing %d x %d RGB image" % (M, N))
+    print("Processing{:d} x {:d} RGB image".format(M, N))
 
     # Initialize S as I
     S = np.float32(image) / 256
@@ -100,12 +98,9 @@ def l0_smoothing(image_r, kappa=2.0, _lambda=2e-2):
     # Iterate until desired convergence in similarity
     while beta < beta_max:
         # if verbose:
-        print("ITERATION %i" % iteration)
+        print("iteration {:d}".format(iteration))
 
         ### Step 1: estimate (h, v) subproblem
-
-        # subproblem 1 start time
-        # s_time = time.time()
 
         # compute dxSp
         h[:, 0:M - 1, :] = np.diff(S, 1, 1)
@@ -123,17 +118,7 @@ def l0_smoothing(image_r, kappa=2.0, _lambda=2e-2):
         h[t] = 0
         v[t] = 0
 
-        # subproblem 1 end time
-        # e_time = time.time()
-        # step_1 = step_1 + e_time - s_time
-        # if verbose:
-        #     print("-subproblem 1: estimate (h,v)")
-        #     print("--time: %f (s)" % (e_time - s_time))
-
         ### Step 2: estimate S subproblem
-
-        # subproblem 2 start time
-        # s_time = time.time()
 
         # compute dxhp + dyvp
         dxhp[:, 0:1, :] = h[:, M - 1:M, :] - h[:, 0:1, :]
@@ -155,14 +140,6 @@ def l0_smoothing(image_r, kappa=2.0, _lambda=2e-2):
         S[:, :, 1] = np.float32((np.fft.ifft2(FS[:, :, 1])).real)
         S[:, :, 2] = np.float32((np.fft.ifft2(FS[:, :, 2])).real)
 
-        # subproblem 2 end time
-        # e_time = time.time()
-        # step_2 = step_2 + e_time - s_time
-        # if verbose:
-        #     print("-subproblem 2: estimate S + 1")
-        #     print("--time: %f (s)" % (e_time - s_time))
-        #     print("")
-
         # update beta for next iteration
         beta *= kappa
         iteration += 1
@@ -174,38 +151,37 @@ def l0_smoothing(image_r, kappa=2.0, _lambda=2e-2):
     return S
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("path", help="Path to image", type=str)
-    parser.add_argument("kappa", )
-    args = parser.parse_args()
-    image_path = args.path
+def get_prefix(file_path):
+    return join(dirname(file_path), basename(splitext(file_path)[0]))
 
-    # img_path = join(dir_path, "images", "pano", "image{:04d}.png".format(readout_idx))
-    if not exists(image_path):
-        print(image_path, " could not be found")
-        exit()
-
-    # Load image
-    # img = imread(image_path)
-
-    # img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    # img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    # img = cv2.blur(img, (10, 10))
-
-    # https://github.com/kjzhang/kzhang-cs205-l0-smoothing
-    s_image = l0_smoothing(image_path, 2.0, 0.01)
-    print(s_image.shape, type(s_image), s_image[0].dtype, np.min(s_image), np.max(s_image))
-
-    prefix = join(dirname(image_path), basename(splitext(image_path)[0]))
-    # cv2.imwrite(prefix + "_l0_smooth.jpg", s_image)
+def edge_detection(image_path, l0_sth_kappa, l0_sth_lambda, canny_min_val, canny_max_val):
+    im = l0_smoothing(image_path, l0_sth_kappa, l0_sth_lambda)
 
     # https://theailearner.com/tag/non-max-suppression/
     # https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
-    s_image = cv2.cvtColor(s_image, cv2.COLOR_BGR2GRAY).astype(np.uint8)
-    # s_image = cv2.normalize(s_image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-    # print(s_image.shape, type(s_image), s_image[0].dtype, np.min(s_image), np.max(s_image))
-    edges = cv2.Canny(s_image, 50, 200, L2gradient=True)
-    # print(edges.shape, type(edges), edges[0].dtype, np.min(edges), np.max(edges))
-    cv2.imwrite(prefix + "_edges.jpg", edges)
+    im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY).astype(np.uint8)
+    im = cv2.normalize(im, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    print(im.shape, type(im), im[0].dtype, np.min(im), np.max(im))
+
+    return cv2.Canny(im, canny_min_val, canny_max_val, L2gradient=True)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Compute edge of the image using L0 smoothing and Canny edge detector.")
+    parser.add_argument("path", help="Path to image", type=str)
+    parser.add_argument("--kappa_smooth", help="Kappa used for L0 smoothing", type=float, default=2.0)
+    parser.add_argument("--lambda_smooth", help="Lambda used for L0 smoothing", type=float, default=2e-2)
+    parser.add_argument("--min_val", help="Canny hysteresis min value", type=float, default=50)
+    parser.add_argument("--max_val", help="Canny hysteresis max value", type=float, default=200)
+    parser.add_argument()
+    args = parser.parse_args()
+
+    # img_path = join(dir_path, "images", "pano", "image{:04d}.png".format(readout_idx))
+    if not exists(args.path):
+        exit(args.path, " could not be found")
+
+    edges = edge_detection(args.path, args.kappa_smooth, args._lambda_smooth, args.min_val, args.max_val)
+    print(edges.shape, type(edges), edges[0].dtype, np.min(edges), np.max(edges))
+
+    cv2.imwrite(get_prefix(args.path) + "_edges.jpg", edges)
 
