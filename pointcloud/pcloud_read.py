@@ -17,7 +17,6 @@ pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.
 
 # convert it to a numpy array
 pcd_array = np.asarray(pcd.points)
-print(pcd_array.shape)
 o3d.visualization.draw_geometries([pcd])
 
 

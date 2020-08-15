@@ -5,7 +5,6 @@ from os import listdir
 import open3d as o3d
 import numpy as np
 import copy
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
 def draw_registration_result(src, tgt, transformation):
@@ -51,7 +50,7 @@ if __name__ == '__main__':
         source = None
         for file_pcl in sorted(listdir(args.pcl)):
             ext = splitext(file_pcl)[-1].lower()
-            if ext == ".pcd" or ext == ".txt" and True:
+            if ext == ".pcd" or ext == ".txt":
                 format = "pcd" if ext[1:] == "pcd" else "xyz"
 
                 file_curr = join(args.pcl, file_pcl)

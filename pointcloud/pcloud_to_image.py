@@ -112,7 +112,7 @@ if __name__ == '__main__':
     parser.add_argument("--tx", help="Tx translation (meters)", type=float, default=0.0934)
     parser.add_argument("--ty", help="Ty translation (meters)", type=float, default=0.0597)
     parser.add_argument("--tz", help="Tz translation (meters)", type=float, default=-0.1659)
-
+    # -55.14,15.47,-0.18,0.0934,0.0597,-0.1659
     args = parser.parse_args()
 
     data_path = args.dir  # dirname(abspath(__file__)) "/media/miro/WD/kucl_dataset/indoor" "D:\kucl_dataset\indoor"
