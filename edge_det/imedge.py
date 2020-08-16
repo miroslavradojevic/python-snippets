@@ -12,6 +12,7 @@ import os
 import numpy as np
 from os.path import splitext, join, dirname
 from matplotlib.image import imread
+from utils import get_prefix
 
 # Convert point-spread function to optical transfer function
 def psf2otf(psf, outSize=None):
@@ -153,19 +154,44 @@ def l0_smoothing(image_path, kappa=2.0, _lambda=2e-2):
     return S
 
 
-def get_prefix(file_path):
-    return join(dirname(file_path), basename(splitext(file_path)[0]))
-
 def edge_detection(image_path, l0_sth_kappa, l0_sth_lambda, canny_min_val, canny_max_val):
     im = l0_smoothing(image_path, l0_sth_kappa, l0_sth_lambda)
 
     # https://theailearner.com/tag/non-max-suppression/
     # https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
-    im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY).astype(np.uint8)
+    im = (cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)*255).astype(np.uint8)
     # im = cv2.normalize(im, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
     print(im.shape, type(im), im[0].dtype, np.min(im), np.max(im))
-
     return cv2.Canny(im, canny_min_val, canny_max_val, L2gradient=True)
+
+def edge_detection_1(image_path, gauss_smooth, canny_min_val, canny_max_val):
+    img = imread(image_path)  # , cv2.IMREAD_GRAYSCALE
+    print("imread:", img.shape, type(img), img[0].dtype, np.min(img), np.max(img))
+    img = cv2.blur(img, (gauss_smooth, gauss_smooth))
+    print("blur:", img.shape, type(img), img[0].dtype, np.min(img), np.max(img))
+    img = (cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) * 255).astype(np.uint8)
+    # img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    print("bgr2gray:", img.shape, type(img), img[0].dtype, np.min(img), np.max(img))
+    img = cv2.Canny(img, canny_min_val, canny_max_val, L2gradient=True)
+    print("canny:", img.shape, type(img), img[0].dtype, np.min(img), np.max(img))
+    return img
+
+def edge_detection_2(image_path, gauss_smooth):
+    # Load image
+    img = imread(args.img) # , cv2.IMREAD_GRAYSCALE
+    print(img.shape, type(img), img[0].dtype, np.min(img), np.max(img))
+
+    # img = cv2.imread(args.img)
+
+
+
+
+    # Smooth image
+    img = cv2.blur(img, (gauss_smooth, gauss_smooth))
+    # Sobel
+    # http://www.adeveloperdiary.com/data-science/computer-vision/how-to-implement-sobel-edge-detection-using-python-from-scratch/
+    return img
+
 
 
 if __name__ == '__main__':
