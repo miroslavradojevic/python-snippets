@@ -1,5 +1,7 @@
 import argparse
 import math
+import sys
+from os.path import dirname, abspath
 from os.path import exists, splitext, basename, isfile
 
 import matplotlib.pyplot as plt
@@ -7,7 +9,13 @@ import numpy as np
 from matplotlib.image import imread
 from scipy.spatial.transform import Rotation as R
 
-from utils import load_points, get_prefix, load_calib, filter_zero_points, compute_edge_score
+from utils import load_points, get_prefix, load_calib, compute_edge_score
+
+print(abspath(__file__))
+print(dirname(abspath(__file__)))
+sys.path.append(dirname(abspath(__file__)))
+sys.path.append(dirname(dirname(abspath(__file__))))
+from edge_det.imedge import edge_detection, edge_detection_1
 
 
 def xyz2pixel(pt, w, h):
@@ -102,7 +110,9 @@ if __name__ == '__main__':
     img = imread(args.img_path)
 
     # Load image edges
-
+    edges = edge_detection(args.img_path, 4.0, 0.04, 50, 100)
+    # edges = edge_detection_1(args.img_path, 20, 10, 50)
+    print("edges:", edges.shape, type(edges), edges[0].dtype, np.amin(edges), np.amax(edges))
 
     # Load points
     if not exists(args.pcl_path):
@@ -131,7 +141,7 @@ if __name__ == '__main__':
         # Visual verification
         fig = plt.figure()
         plt.imshow(img)
-        plt.scatter(x=locs_pix[0, :], y=locs_pix[1, :], marker='o', c='#f5784280', lw=0, s=pts_edge_score*2.0)
+        plt.scatter(x=locs_pix[0, :], y=locs_pix[1, :], marker='o', c='#f5784280', lw=0, s=pts_edge_score * 2.0)
         fig.tight_layout()
         export_path = get_prefix(args.img_path) + "_" + basename(splitext(args.pcl_path)[0]) + "_" + (
             args.t if calib is None else "calib.txt") + ".pdf"
@@ -139,3 +149,11 @@ if __name__ == '__main__':
         print(export_path)
 
         # Overlay over gradient image
+        fig = plt.figure()
+        plt.imshow(edges, cmap='gray') #  , vmin=0, vmax=255
+        plt.scatter(x=locs_pix[0, :], y=locs_pix[1, :], marker='o', c='#f5784280', lw=0, s=pts_edge_score * 2.0)
+        # fig.tight_layout()
+        export_path = get_prefix(args.img_path) + "_edge" + "_" + basename(splitext(args.pcl_path)[0]) + "_" + (
+            args.t if calib is None else "calib.txt") + ".pdf"
+        fig.savefig(export_path, dpi=150, bbox_inches='tight')
+        print(export_path)
