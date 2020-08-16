@@ -13,9 +13,8 @@ from utils import load_points, get_prefix, load_calib, compute_edge_score
 
 print(abspath(__file__))
 print(dirname(abspath(__file__)))
-sys.path.append(dirname(abspath(__file__)))
 sys.path.append(dirname(dirname(abspath(__file__))))
-from edge_det.imedge import edge_detection, edge_detection_1
+from edge_det.imedge import edge_detection, edge_detection_1, edge_detection_2
 
 
 def xyz2pixel(pt, w, h):
@@ -110,8 +109,9 @@ if __name__ == '__main__':
     img = imread(args.img_path)
 
     # Load image edges
-    edges = edge_detection(args.img_path, 4.0, 0.04, 50, 100)
-    # edges = edge_detection_1(args.img_path, 20, 10, 50)
+    # edges = edge_detection(args.img_path, 4.0, 0.04, 50, 200)
+    # edges = edge_detection_1(args.img_path, 3, 50, 70)
+    edges = edge_detection_2(args.img_path, 3)
     print("edges:", edges.shape, type(edges), edges[0].dtype, np.amin(edges), np.amax(edges))
 
     # Load points
