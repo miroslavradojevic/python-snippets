@@ -1,26 +1,13 @@
 import argparse
 import math
-from collections import namedtuple
-from os.path import exists, splitext, join, dirname, basename, isfile
+from os.path import exists, splitext, basename, isfile
 
 import matplotlib.pyplot as plt
 import numpy as np
-import open3d as o3d
 from matplotlib.image import imread
 from scipy.spatial.transform import Rotation as R
 
-
-def get_prefix(file_path):
-    return join(dirname(file_path), basename(splitext(file_path)[0]))
-
-
-def load_points(ptcloud_path, format):
-    """
-    Expects two formats .xyz or .pcd
-    Use Open3D library to read based on the file extension
-    """
-    data = o3d.io.read_point_cloud(ptcloud_path, format=format)
-    return data
+from utils import load_points, get_prefix, load_calib, filter_zero_points, compute_edge_score
 
 
 def xyz2pixel(pt, w, h):
@@ -39,11 +26,11 @@ def xyz2pixel(pt, w, h):
     return pixel
 
 
-def project_pointcloud_ladybug5(im, ptcloud, rot, tr):
+def project_pointcloud_kucl(im, ptcloud, rot, tr):
     # Rigid-body transformation between LiDAR and camera
     R_lidar_to_lb = R.from_euler('ZYX', np.deg2rad(rot)).as_dcm()  # Rotation: [yaw, pitch, roll] in degrees
     t_lidar_to_lb = np.array(tr).reshape(3, 1)  # Translation [tx, ty, tz] in meters
-
+    print(R_lidar_to_lb)
     w = im.shape[1]
     h = im.shape[0]
 
@@ -54,81 +41,6 @@ def project_pointcloud_ladybug5(im, ptcloud, rot, tr):
     pix = xyz2pixel(pt_lb, w, h)
     pix = np.round(pix, 0).astype(np.int)  # round and cast as integer
     return pix
-
-
-def read_calib_file(filepath):
-    """Read in a calibration file and parse into a dictionary."""
-    data = {}
-
-    with open(filepath, 'r') as f:
-        for line in f.readlines():
-            key, value = line.split(':', 1)
-            # The only non-float values in these files are dates, which
-            # we don't care about anyway
-            try:
-                data[key] = np.array([float(x) for x in value.split()])
-            except ValueError:
-                pass
-
-    return data
-
-
-def load_calib(calib_filepath):
-    """Load and compute intrinsic and extrinsic calibration parameters."""
-    # We'll build the calibration parameters as a dictionary, then
-    # convert it to a namedtuple to prevent it from being modified later
-    data = {}
-
-    # Load the calibration file
-    # calib_filepath = os.path.join(self.sequence_path, 'calib.txt')
-
-    filedata = read_calib_file(calib_filepath)
-
-    # Create 3x4 projection matrices
-    P_rect_00 = np.reshape(filedata['P0'], (3, 4))
-    P_rect_10 = np.reshape(filedata['P1'], (3, 4))
-    P_rect_20 = np.reshape(filedata['P2'], (3, 4))
-    P_rect_30 = np.reshape(filedata['P3'], (3, 4))
-
-    data['P_rect_00'] = P_rect_00
-    data['P_rect_10'] = P_rect_10
-    data['P_rect_20'] = P_rect_20
-    data['P_rect_30'] = P_rect_30
-
-    # Compute the rectified extrinsics from cam0 to camN
-    T1 = np.eye(4)
-    T1[0, 3] = P_rect_10[0, 3] / P_rect_10[0, 0]
-    T2 = np.eye(4)
-    T2[0, 3] = P_rect_20[0, 3] / P_rect_20[0, 0]
-    T3 = np.eye(4)
-    T3[0, 3] = P_rect_30[0, 3] / P_rect_30[0, 0]
-
-    # Compute the velodyne to rectified camera coordinate transforms
-    data['T_cam0_velo'] = np.reshape(filedata['Tr'], (3, 4))
-    data['T_cam0_velo'] = np.vstack([data['T_cam0_velo'], [0, 0, 0, 1]])
-    data['T_cam1_velo'] = T1.dot(data['T_cam0_velo'])
-    data['T_cam2_velo'] = T2.dot(data['T_cam0_velo'])
-    data['T_cam3_velo'] = T3.dot(data['T_cam0_velo'])
-
-    # Compute the camera intrinsics
-    data['K_cam0'] = P_rect_00[0:3, 0:3]
-    data['K_cam1'] = P_rect_10[0:3, 0:3]
-    data['K_cam2'] = P_rect_20[0:3, 0:3]
-    data['K_cam3'] = P_rect_30[0:3, 0:3]
-
-    # Compute the stereo baselines in meters by projecting the origin of
-    # each camera frame into the velodyne frame and computing the distances
-    # between them
-    p_cam = np.array([0, 0, 0, 1])
-    p_velo0 = np.linalg.inv(data['T_cam0_velo']).dot(p_cam)
-    p_velo1 = np.linalg.inv(data['T_cam1_velo']).dot(p_cam)
-    p_velo2 = np.linalg.inv(data['T_cam2_velo']).dot(p_cam)
-    p_velo3 = np.linalg.inv(data['T_cam3_velo']).dot(p_cam)
-
-    data['b_gray'] = np.linalg.norm(p_velo1 - p_velo0)  # gray baseline
-    data['b_rgb'] = np.linalg.norm(p_velo3 - p_velo2)  # rgb baseline
-
-    return namedtuple('CalibData', data.keys())(*data.values())
 
 
 def project_pointcloud_kitti(im, ptcloud, calib):
@@ -170,8 +82,8 @@ if __name__ == '__main__':
     if args.t is None:
         exit("Transformation was not given")
 
-    if not exists(args.img):
-        exit(args.img + " could not be found")
+    if not exists(args.img_path):
+        exit(args.img_path + " could not be found")
 
     yaw, pitch, roll, tx, ty, tz = [None] * 6
     calib = None
@@ -187,38 +99,43 @@ if __name__ == '__main__':
         exit("There need to be 6 comma-delimited values in transformation or path to the calib.txt file")
 
     # Load image
-    img = imread(args.img)
+    img = imread(args.img_path)
+
+    # Load image edges
+
 
     # Load points
-    if not exists(args.pcl):
-        exit(args.pcl + " could not be found")
+    if not exists(args.pcl_path):
+        exit(args.pcl_path + " could not be found")
 
-    ext = splitext(args.pcl)[-1].lower()
+    ext = splitext(args.pcl_path)[-1].lower()
     if ext is None or ext not in [".pcd", ".txt", ".xyz"]:
         exit("Point-cloud file has wrong extension")
 
-    pts = load_points(args.pcl, "pcd" if ext[1:] == "pcd" else "xyz")
-    pt_lidar = np.asarray(pts.points).transpose()[:3, :]
+    pts = load_points(args.pcl_path, "pcd" if ext[1:] == "pcd" else "xyz")
+    pts_array = np.asarray(pts.points).transpose()[:3, :]
 
-    # Filter points that are [0, 0, 0]
-    rr = np.sqrt(np.multiply(pt_lidar[0, :], pt_lidar[0, :]) + \
-                 np.multiply(pt_lidar[1, :], pt_lidar[1, :]) + \
-                 np.multiply(pt_lidar[2, :], pt_lidar[2, :]))
+    # pts_array = filter_zero_points(pts_array)
 
-    pt_lidar = pt_lidar[:, rr > 0.0]
+    # Compute pointcloud edge features
+    pts_edge_score = compute_edge_score(pts, 5.0, 100)
+    pts_edge_score = pts_edge_score / pts_edge_score.max(axis=0)
+    pts_edge_score = np.prod(pts_edge_score, axis=1)
 
     if yaw is not None:
-        locs_pix = project_pointcloud_ladybug5(img, pt_lidar, [yaw, pitch, roll], [tx, ty, tz])
+        locs_pix = project_pointcloud_kucl(img, pts_array, [yaw, pitch, roll], [tx, ty, tz])
     elif calib is not None:
-        locs_pix = project_pointcloud_kitti(img, pt_lidar, calib)
+        locs_pix = project_pointcloud_kitti(img, pts_array, calib)
 
     if locs_pix is not None:
         # Visual verification
         fig = plt.figure()
         plt.imshow(img)
-        plt.scatter(x=locs_pix[0, :], y=locs_pix[1, :], marker='o', c='#f5784280', lw=0, s=0.3)
+        plt.scatter(x=locs_pix[0, :], y=locs_pix[1, :], marker='o', c='#f5784280', lw=0, s=pts_edge_score*2.0)
         fig.tight_layout()
-        export_path = get_prefix(args.img) + "_" + basename(splitext(args.pcl)[0]) + "_" + (
+        export_path = get_prefix(args.img_path) + "_" + basename(splitext(args.pcl_path)[0]) + "_" + (
             args.t if calib is None else "calib.txt") + ".pdf"
         fig.savefig(export_path, dpi=150, bbox_inches='tight')
         print(export_path)
+
+        # Overlay over gradient image
