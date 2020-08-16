@@ -2,10 +2,11 @@
 # https://matplotlib.org/mpl_toolkits/mplot3d/tutorial.html#scatter-plots
 import argparse
 from os.path import exists, splitext
+import open3d as o3d
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
-import open3d as o3d
+
 from utils import load_points, get_prefix
 
 if __name__ == '__main__':
