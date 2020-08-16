@@ -156,7 +156,6 @@ def l0_smoothing(image_path, kappa=2.0, _lambda=2e-2):
 
 def edge_detection(image_path, l0_sth_kappa, l0_sth_lambda, canny_min_val, canny_max_val):
     im = l0_smoothing(image_path, l0_sth_kappa, l0_sth_lambda)
-
     # https://theailearner.com/tag/non-max-suppression/
     # https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
     im = (cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)*255).astype(np.uint8)
@@ -177,11 +176,22 @@ def edge_detection_1(image_path, gauss_smooth, canny_min_val, canny_max_val):
     return img
 
 def edge_detection_2(image_path, gauss_smooth):
-    # Load image
-    img = imread(args.img) # , cv2.IMREAD_GRAYSCALE
+    img = imread(image_path) # , cv2.IMREAD_GRAYSCALE cv2.imread(args.img)
     print(img.shape, type(img), img[0].dtype, np.min(img), np.max(img))
+    img = cv2.blur(img, (gauss_smooth, gauss_smooth))
+    print("blur:", img.shape, type(img), img[0].dtype, np.min(img), np.max(img))
+    img = (cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) * 255) #.astype(np.uint8)
+    print("bgr2gray:", img.shape, type(img), img[0].dtype, np.min(img), np.max(img))
 
-    # img = cv2.imread(args.img)
+    grad_x = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=3)
+    # grad_y = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=3)
+
+    abs_grad_x = cv2.convertScaleAbs(grad_x)
+    # abs_grad_y = cv2.convertScaleAbs(grad_y)
+
+    grad = cv2.addWeighted(abs_grad_x, 0.5, abs_grad_x, 0.5, 0)
+
+    return grad
 
 
 
