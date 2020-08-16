@@ -5,6 +5,13 @@ import cv2
 
 from matplotlib.image import imread
 
+def edge_detection(img, gauss_smooth, ):
+    # Smooth image
+    img = cv2.blur(img, (gauss_smooth, gauss_smooth))
+    # Sobel
+    # http://www.adeveloperdiary.com/data-science/computer-vision/how-to-implement-sobel-edge-detection-using-python-from-scratch/
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Compute image edges" + \
@@ -24,7 +31,4 @@ if __name__ == '__main__':
     # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.uint8)
 
     # img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-
-    # img = cv2.blur(img, (10, 10))
-    # cv2.imwrite(prefix + "_l0_smooth.jpg", s_image)
 
