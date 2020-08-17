@@ -33,7 +33,7 @@ def xyz2pixel(pt, w, h):
     return pixel
 
 
-def project_pointcloud_kucl(im, ptcloud, rot, tr):
+def project_pointcloud_kucl(im, ptcloud, ptcloud_weight, rot, tr):
     # Rigid-body transformation between LiDAR and camera
     R_lidar_to_lb = R.from_euler('ZYX', np.deg2rad(rot)).as_dcm()  # Rotation: [yaw, pitch, roll] in degrees
     t_lidar_to_lb = np.array(tr).reshape(3, 1)  # Translation [tx, ty, tz] in meters
@@ -47,15 +47,18 @@ def project_pointcloud_kucl(im, ptcloud, rot, tr):
     # Projection to spherical image
     pix = xyz2pixel(pt_lb, w, h)
     pix = np.round(pix, 0).astype(np.int)  # round and cast as integer
-    return pix
+
+    pix_weight = ptcloud_weight
+
+    return pix, pix_weight
 
 
-def project_pointcloud_kitti(im, ptcloud, calib):
+def project_pointcloud_kitti(im, ptcloud, ptcloud_weight, calib):
     # Rigid-body transformation between LiDAR and camera
     ptcloud = np.vstack([ptcloud, np.ones((1, ptcloud.shape[1]))])
     pt_cam = calib.T_cam2_velo.dot(ptcloud)  # np.matmul(calib.T_cam2_velo, ptcloud)
-    print("T_cam2_velo:\n", calib.T_cam2_velo)
-    print("P_rect_20:\n", calib.P_rect_20)
+    # print("T_cam2_velo:\n", calib.T_cam2_velo)
+    # print("P_rect_20:\n", calib.P_rect_20)
 
     # Projection to image
     pt_uvw = calib.P_rect_20.dot(pt_cam)
@@ -65,15 +68,22 @@ def project_pointcloud_kitti(im, ptcloud, calib):
     w = im.shape[1]
     h = im.shape[0]
 
-    # print("pix:\n", pix.shape)
-    pix = pix[:, pix[0, :] >= 0]
-    pix = pix[:, pix[1, :] >= 0]
+    keep_elems_1 = np.logical_and(pix[0, :] >= 0, pix[1, :] >= 0)
+    keep_elems_2 = np.logical_and(pix[0, :] < w, pix[1, :] < h)
+    keep_elems = np.logical_and(keep_elems_1, keep_elems_2)
+    pix = pix[:, keep_elems]
+    ptcloud_weight = ptcloud_weight[:, keep_elems]
+    # pix = pix[:, ]
+    # ptcloud_weight = ptcloud_weight[:, ]
 
-    pix = pix[:, pix[0, :] < w]
-    pix = pix[:, pix[1, :] < h]
+    # pix = pix[:, ]
+    # ptcloud_weight = ptcloud_weight[:, ]
+    # pix = pix[:, ]
+    # ptcloud_weight = ptcloud_weight[:, ]
 
-    print("pix:\n", pix.shape)
-    return pix
+    print("pix:", pix.shape)
+    print("pix_weight:", ptcloud_weight.shape)
+    return pix, ptcloud_weight
 
 
 if __name__ == '__main__':
@@ -109,10 +119,10 @@ if __name__ == '__main__':
     img = imread(args.img_path)
 
     # Load image edges
-    # edges = edge_detection(args.img_path, 4.0, 0.04, 50, 200)
-    # edges = edge_detection_1(args.img_path, 3, 50, 70)
-    edges = edge_detection_2(args.img_path, 3)
-    print("edges:", edges.shape, type(edges), edges[0].dtype, np.amin(edges), np.amax(edges))
+    edges = edge_detection(args.img_path, 4.0, 0.04, 50, 200)
+    # print("edges:", edges.shape, type(edges), edges[0].dtype, np.amin(edges), np.amax(edges))
+    edges_1 = edge_detection_1(args.img_path, 3, 50, 100)
+    edges_2 = edge_detection_2(args.img_path, 3)
 
     # Load points
     if not exists(args.pcl_path):
@@ -126,34 +136,59 @@ if __name__ == '__main__':
     pts_array = np.asarray(pts.points).transpose()[:3, :]
 
     # pts_array = filter_zero_points(pts_array)
-
+    print(len(pts.points), flush=True)
     # Compute pointcloud edge features
-    pts_edge_score = compute_edge_score(pts, 5.0, 100)
+    pts_edge_score = compute_edge_score(pts, 10.0, 100)
     pts_edge_score = pts_edge_score / pts_edge_score.max(axis=0)
     pts_edge_score = np.prod(pts_edge_score, axis=1)
 
+    pts_edge_score = np.expand_dims(pts_edge_score, -1)
+    pts_edge_score = pts_edge_score.transpose()
+    print("pts_edge_score.shape=", pts_edge_score.shape, flush=True)
+
+
     if yaw is not None:
-        locs_pix = project_pointcloud_kucl(img, pts_array, [yaw, pitch, roll], [tx, ty, tz])
+        locs_pix, locs_w = project_pointcloud_kucl(img, pts_array, pts_edge_score, [yaw, pitch, roll], [tx, ty, tz])
     elif calib is not None:
-        locs_pix = project_pointcloud_kitti(img, pts_array, calib)
+
+        print("pts_array.shape=", pts_array.shape, flush=True)
+        locs_pix, locs_w = project_pointcloud_kitti(img, pts_array, pts_edge_score, calib)
 
     if locs_pix is not None:
+
+
+
         # Visual verification
         fig = plt.figure()
         plt.imshow(img)
-        plt.scatter(x=locs_pix[0, :], y=locs_pix[1, :], marker='o', c='#f5784280', lw=0, s=pts_edge_score * 2.0)
+        plt.scatter(x=locs_pix[0, :], y=locs_pix[1, :], marker='o', c='#f5784280', lw=0, s=locs_w * 2.0)
         fig.tight_layout()
         export_path = get_prefix(args.img_path) + "_" + basename(splitext(args.pcl_path)[0]) + "_" + (
-            args.t if calib is None else "calib.txt") + ".pdf"
-        fig.savefig(export_path, dpi=150, bbox_inches='tight')
+            args.t if calib is None else "calib.txt") + ".png"
+        fig.savefig(export_path, dpi=250, bbox_inches='tight')
         print(export_path)
 
         # Overlay over gradient image
         fig = plt.figure()
         plt.imshow(edges, cmap='gray') #  , vmin=0, vmax=255
-        plt.scatter(x=locs_pix[0, :], y=locs_pix[1, :], marker='o', c='#f5784280', lw=0, s=pts_edge_score * 2.0)
-        # fig.tight_layout()
+        plt.scatter(x=locs_pix[0, :], y=locs_pix[1, :], marker='o', c='#f5784280', lw=0, s=locs_w * 2.0)
         export_path = get_prefix(args.img_path) + "_edge" + "_" + basename(splitext(args.pcl_path)[0]) + "_" + (
-            args.t if calib is None else "calib.txt") + ".pdf"
-        fig.savefig(export_path, dpi=150, bbox_inches='tight')
+            args.t if calib is None else "calib.txt") + ".png"
+        fig.savefig(export_path, dpi=250, bbox_inches='tight')
+        print(export_path)
+
+        fig = plt.figure()
+        plt.imshow(edges_1, cmap='gray')  # , vmin=0, vmax=255
+        plt.scatter(x=locs_pix[0, :], y=locs_pix[1, :], marker='o', c='#f5784280', lw=0, s=locs_w * 2.0)
+        export_path = get_prefix(args.img_path) + "_edge1" + "_" + basename(splitext(args.pcl_path)[0]) + "_" + (
+            args.t if calib is None else "calib.txt") + ".png"
+        fig.savefig(export_path, dpi=250, bbox_inches='tight')
+        print(export_path)
+
+        fig = plt.figure()
+        plt.imshow(edges_2, cmap='gray')  # , vmin=0, vmax=255
+        plt.scatter(x=locs_pix[0, :], y=locs_pix[1, :], marker='o', c='#f5784280', lw=0, s=locs_w * 2.0)
+        export_path = get_prefix(args.img_path) + "_edge2" + "_" + basename(splitext(args.pcl_path)[0]) + "_" + (
+            args.t if calib is None else "calib.txt") + ".png"
+        fig.savefig(export_path, dpi=250, bbox_inches='tight')
         print(export_path)

@@ -26,9 +26,9 @@ if __name__ == '__main__':
     o3d.visualization.draw_geometries([pcd])
     print(len(pcd.points))
 
-    pcd_down = pcd.voxel_down_sample(voxel_size=0.5)
-    o3d.visualization.draw_geometries([pcd_down])
-    print(len(pcd_down.points))
+    # pcd_down = pcd.voxel_down_sample(voxel_size=0.5)
+    # o3d.visualization.draw_geometries([pcd_down])
+    # print(len(pcd_down.points))
 
     pt = np.asarray(pcd.points).transpose()[:3, :]
     print(pt.shape)

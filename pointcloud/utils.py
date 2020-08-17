@@ -109,8 +109,8 @@ def compute_edge_score(pcd, r, nn):
     # Compute set of nearest-neighbor indexes
     # KDTree
     pcd_tree = o3d.geometry.KDTreeFlann(pcd)
-
     nr_pts = len(pcd.points)
+    print("nr_pts", nr_pts, flush=True)
     edge_sc = np.zeros((nr_pts,2))
     for i in range(nr_pts):
         [_, idx, _] = pcd_tree.search_hybrid_vector_3d(pcd.points[i], r, nn)
@@ -120,12 +120,16 @@ def compute_edge_score(pcd, r, nn):
         d_p_Np = p0 - pN
 
         if len(d_p_Np) > 1:
-            edge_sc[i, 0] = np.linalg.norm(np.mean(d_p_Np, axis=0)) / np.amax(np.linalg.norm(d_p_Np, axis=1))
+            edge_score_1_norm = np.amax(np.linalg.norm(d_p_Np, axis=1))
+            edge_sc[i, 0] = np.linalg.norm(np.mean(d_p_Np, axis=0)) / edge_score_1_norm if edge_score_1_norm > 0 else 0
             C = np.cov(np.transpose(pN)) # Estimate a covariance matrix, Each row of m represents a variable, and each column a single observation
             w, _ = np.linalg.eig(C)
             # https://stackoverflow.com/questions/10083772/python-numpy-sort-eigenvalues
             w.sort()
-            edge_sc[i, 1] = 1 - ((w[1]-w[0])/w[2])
+            if w[2] > 0:
+                edge_sc[i, 1] = 1 - ((w[1]-w[0])/w[2])
+            else:
+                edge_sc[i, 1] = 0
         else:
             edge_sc[i, :] = np.zeros((1, 2))
     return edge_sc
