@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     # # rotate traj_x to align
     import math
-    if True:
+    if False:
         alpha = (18.0 / 360.0) * math.pi * 2
         trajectories['UKF']['x1'] = trajectories['UKF']['x'] * math.cos(alpha) - trajectories['UKF']['y'] * math.sin(alpha)
         trajectories['UKF']['y1'] = trajectories['UKF']['y'] * math.cos(alpha) + trajectories['UKF']['x'] * math.sin(alpha)
