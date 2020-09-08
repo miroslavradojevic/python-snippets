@@ -4,13 +4,13 @@ import numpy as np
 import argparse
 from os.path import exists, splitext
 import open3d as o3d
-from utils import load_points, compute_edge_score
+from utils import load_points, edge_score
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("pcl_path", help="Path to pointcloud file (.pcd | .xyz | .txt)", type=str)
-    parser.add_argument("-r", help="Neighborhood radius", type=float, default=3.0)
-    parser.add_argument("-nn", help="Neighborhood - N nearest neighbors", type=int, default=20)
+    parser.add_argument("pcl_path", help="Path to point cloud file (.pcd | .xyz | .txt)", type=str)
+    parser.add_argument("-r", help="Neighborhood: radius", type=float, default=3.0)
+    parser.add_argument("-nn", help="Neighborhood: N nearest neighbors", type=int, default=20)
     args = parser.parse_args()
 
     # X = np.array([[-1, -1], [-2, -1], [-3, -2], [1, 1], [2, 1], [3, 2]])
@@ -30,10 +30,7 @@ if __name__ == '__main__':
     pcd = load_points(args.pcl_path, "pcd" if ext[1:] == "pcd" else "xyz")
     # o3d.visualization.draw_geometries([pcd])
     print(len(pcd.points), "points found")
-
     # pcd_array = np.asarray(pcd.points)
-
-
 
     # search_knn_vector_3d - returns a list of indices of the k nearest neighbors of the anchor point
     # [_, idx, _] = pcd_tree.search_knn_vector_3d(pcd.points[0], args.nn)
@@ -48,19 +45,18 @@ if __name__ == '__main__':
     # [_, idx, _] = pcd_tree.search_hybrid_vector_3d(pcd.points[0], args.r, args.nn)
     # np.asarray(pcd.points)[idx[1:], :]
 
-    pcd_edge_score = compute_edge_score(pcd, args.r, args.nn)
+    sc = edge_score(pcd, args.r, args.nn)
     # Normalize each score
-    pcd_edge_score = pcd_edge_score / pcd_edge_score.max(axis=0)
+    sc = sc / sc.max(axis=0)
     # Multiply scores
-    pcd_edge_score = np.prod(pcd_edge_score, axis=1)
-
+    sc = np.prod(sc, axis=1)
     # give all points grey color
     pcd.paint_uniform_color([0.0, 0.0, 0.0])
-
     # Set colors based on the score
     from matplotlib import cm
+
     reds = cm.get_cmap('Reds')
-    np.asarray(pcd.colors)[:, :] = reds(pcd_edge_score)[:, :3]
+    np.asarray(pcd.colors)[:, :] = reds(sc)[:, :3]
 
     o3d.visualization.draw_geometries([pcd])
 
