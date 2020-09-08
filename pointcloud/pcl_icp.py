@@ -19,13 +19,6 @@ def draw_registration_result(src, tgt, transformation):
     # lookat = [1.6784, 2.0612, 1.4451],
     # up = [-0.3402, -0.9189, -0.1996]
 
-
-# print("test")
-# aa = o3d.io.read_point_cloud("/media/miro/WD/kucl_dataset/indoor/_scans/_scan0029.txt", format='xyz')  # (target_path, format=format)
-# print("aa=", np.asarray(aa.points).shape)
-# if True:
-#     exit()
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("pcl", help="Path to piont cloud file/directory", type=str)
@@ -69,7 +62,7 @@ if __name__ == '__main__':
                         source, target, args.thr, trans_init,
                         o3d.registration.TransformationEstimationPointToPlane(),
                         o3d.registration.ICPConvergenceCriteria(max_iteration = 50))
-                    # print(reg_p2l)
+
                     # print("Transformation is:", reg_p2l.transformation)
                     t.append(reg_p2l.transformation[:3,3].transpose())
 
@@ -101,6 +94,10 @@ if __name__ == '__main__':
             print(np.asarray(pcd_src.points).shape)
             pcd_src.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.radius, max_nn=args.nn_max))
 
+            # convert it to a numpy array
+            # np.asarray(pcd_src.points)
+            # o3d.visualization.draw_geometries([pcd_src])
+
             if target_ext == ".pcd" or target_ext == ".txt":
                 format = "pcd" if target_ext[1:] == "pcd" else "xyz"
 
@@ -108,6 +105,10 @@ if __name__ == '__main__':
                 pcd_tgt = o3d.io.read_point_cloud(target_path, format=format)# ("/media/miro/WD/kucl_dataset/indoor/_scans/_scan0029.txt", format='xyz') #
                 print(np.asarray(pcd_tgt.points).shape)
                 pcd_tgt.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.radius, max_nn=args.nn_max))
+
+                # convert it to a numpy array
+                # np.asarray(pcd_tgt.points)
+                # o3d.visualization.draw_geometries([pcd_tgt])
 
                 reg_p2l = o3d.registration.registration_icp(
                     pcd_src, pcd_tgt, args.thr, trans_init,
