@@ -9,7 +9,7 @@ import numpy as np
 from matplotlib.image import imread
 from scipy.spatial.transform import Rotation as R
 
-from utils import load_points, get_prefix, load_calib, compute_edge_score
+from utils import load_points, get_prefix, load_calib, edge_score
 
 print(abspath(__file__))
 print(dirname(abspath(__file__)))
@@ -138,7 +138,7 @@ if __name__ == '__main__':
     # pts_array = filter_zero_points(pts_array)
     print(len(pts.points), flush=True)
     # Compute pointcloud edge features
-    pts_edge_score = compute_edge_score(pts, 10.0, 100)
+    pts_edge_score = edge_score(pts, 10.0, 100)
     pts_edge_score = pts_edge_score / pts_edge_score.max(axis=0)
     pts_edge_score = np.prod(pts_edge_score, axis=1)
 
