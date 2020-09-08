@@ -100,18 +100,16 @@ def load_calib(calib_filepath):
 def filter_zero_points(pts):
     # Filter points that are [0, 0, 0]
     pts_d = np.sqrt(np.multiply(pts[0, :], pts[0, :]) + \
-                 np.multiply(pts[1, :], pts[1, :]) + \
-                 np.multiply(pts[2, :], pts[2, :]))
+                    np.multiply(pts[1, :], pts[1, :]) + \
+                    np.multiply(pts[2, :], pts[2, :]))
 
     return pts[:, pts_d > 0.0]
 
-def compute_edge_score(pcd, r, nn):
-    # Compute set of nearest-neighbor indexes
-    # KDTree
+
+def edge_score(pcd, r, nn):
     pcd_tree = o3d.geometry.KDTreeFlann(pcd)
     nr_pts = len(pcd.points)
-    print("nr_pts", nr_pts, flush=True)
-    edge_sc = np.zeros((nr_pts,2))
+    edge_sc = np.zeros((nr_pts, 2))
     for i in range(nr_pts):
         [_, idx, _] = pcd_tree.search_hybrid_vector_3d(pcd.points[i], r, nn)
         p0 = np.asarray(pcd.points)[idx[0], :]
@@ -122,14 +120,127 @@ def compute_edge_score(pcd, r, nn):
         if len(d_p_Np) > 1:
             edge_score_1_norm = np.amax(np.linalg.norm(d_p_Np, axis=1))
             edge_sc[i, 0] = np.linalg.norm(np.mean(d_p_Np, axis=0)) / edge_score_1_norm if edge_score_1_norm > 0 else 0
-            C = np.cov(np.transpose(pN)) # Estimate a covariance matrix, Each row of m represents a variable, and each column a single observation
+            # Estimate a covariance matrix: Each row of m represents a variable, and each column a single observation
+            C = np.cov(np.transpose(pN))
             w, _ = np.linalg.eig(C)
             # https://stackoverflow.com/questions/10083772/python-numpy-sort-eigenvalues
             w.sort()
+            print("w={}".format(w))
             if w[2] > 0:
-                edge_sc[i, 1] = 1 - ((w[1]-w[0])/w[2])
+                edge_sc[i, 1] = 1 - ((w[1] - w[0]) / w[2])
             else:
                 edge_sc[i, 1] = 0
         else:
             edge_sc[i, :] = np.zeros((1, 2))
     return edge_sc
+
+
+def edge_detection(pcd, rd, nn, thr):
+    pcd_tree = o3d.geometry.KDTreeFlann(pcd)
+    P3 = []
+    Ic = np.zeros(len(pcd.points))
+    for i in range(len(pcd.points)):
+        [_, idx, _] = pcd_tree.search_hybrid_vector_3d(pcd.points[i], rd, nn)
+        if len(idx) > 1:
+            Pc = np.asarray(pcd.points)[idx[0], :].reshape(1, -1)
+            Pi = np.asarray(pcd.points)[idx[1:], :]
+            Pi_mean = np.mean(Pi, axis=0).reshape(1, -1)
+            Ic[i] = np.linalg.norm(Pc - Pi_mean) / rd  # .append()
+            if Ic[i] >= thr:
+                P3.append(Pc)
+
+
+    P1 = []
+    P2 = []
+
+    for i in range(len(pcd.points)):
+        [_, idx, _] = pcd_tree.search_hybrid_vector_3d(pcd.points[i], rd, nn)
+        if len(idx) > 1:
+            # Compute 3D gradient
+            Pc = np.asarray(pcd.points)[idx[0], :].reshape(1, -1)
+            # print("Pc -> {} {}".format(Pc, np.linalg.norm(Pc)))
+            Pi = np.asarray(pcd.points)[idx[1:], :]
+            # print("Pi -> {}".format(Pi))
+            s_ic = Pc - Pi
+
+            # print("s_ic -> {}".format(s_ic))
+            s_ic = np.linalg.norm(s_ic, axis=1)
+
+            if np.max(s_ic) > 1e-6: # happens that some lidar redouts have all pints and all distances zero
+                # print("Pc.shape -> {}".format(Pc.shape))
+                # print("Pi.shape -> {}".format(Pi.shape))
+                # print("s_ic -> {}".format(s_ic.shape))
+                # print("s_ic -> {}".format(s_ic))
+
+                Ix = Ic[i] - Ic[idx[1:]]
+                # print("Ix -> {}".format(Ix.shape))
+                dx_ic = Pc[0, 0] - Pi[:, 0]
+                # print("dx_ic -> {}".format(dx_ic.shape))
+                Ix = np.multiply(Ix, dx_ic)
+
+                Ix = np.divide(Ix, s_ic)
+                i_max = np.argmax(Ix)
+                Ix = Ix[i_max]
+                # print("Ix = {}".format(Ix))
+
+                Iy = Ic[i] - Ic[idx[1:]]  # TODO repeated calculation
+                dy_ic = Pc[0, 1] - Pi[:, 1]
+                Iy = np.multiply(Iy, dy_ic)
+                Iy = np.divide(Iy, s_ic)
+                i_max = np.argmax(Iy)
+                Iy = Iy[i_max]
+                # print("Iy = {}".format(Iy))
+
+                Iz = Ic[i] - Ic[idx[1:]]  # TODO repeated calculation
+                dz_ic = Pc[0, 2] - Pi[:, 2]
+                Iz = np.multiply(Iz, dz_ic)
+                Iz = np.divide(Iz, s_ic)
+                i_max = np.argmax(Iz)
+                Iz = Iz[i_max]
+                # print("Iz = {}".format(Iz))
+
+                M = [[Ix ** 2, Ix * Iy, Ix * Iz],
+                     [Iy * Ix, Iy ** 2, Iy * Iz],
+                     [Iz * Ix, Ix * Iy, Iz ** 2]]
+
+                #
+                w, _ = np.linalg.eig(M)
+                w = np.abs(w)
+                w.sort()
+                # print("w={}".format(w))
+                if w[1] > 0 and w[2]/w[1] >= thr:
+                    P2.append(Pc)
+                # if w[0] > 0 and w[1]/w[0] >= thr:
+                #     P2.append(Pc)
+
+                #
+                det_M = np.linalg.det(M)
+                tr_M = np.trace(M)
+                # print("det(M)={}".format(det_M))
+                # print("tr(M)={}".format(tr_M))
+
+                if det_M > 0:
+                    if tr_M**3/det_M >= thr:
+                        P1.append(Pc)
+                else:
+                    print("Warning: det(M) was zero, skipping this point")
+
+    P1 = np.array(P1).squeeze(axis=1)  # remove mid axis
+    # Ic = np.array(Ic)
+    # print("P:{}, Ic:{}".format(P1.shape, Ic.shape))
+
+    pcd1 = o3d.geometry.PointCloud()
+    pcd1.points = o3d.utility.Vector3dVector(P1)
+
+    P2 = np.array(P2).squeeze(axis=1)
+    pcd2 = o3d.geometry.PointCloud()
+    pcd2.points = o3d.utility.Vector3dVector(P2)
+
+    P3 = np.array(P3).squeeze(axis=1)
+    pcd3 = o3d.geometry.PointCloud()
+    pcd3.points = o3d.utility.Vector3dVector(P3)
+
+    # TODO set colors as weight
+    # TODO return extracted edge indexes
+
+    return pcd1, pcd2, pcd3
