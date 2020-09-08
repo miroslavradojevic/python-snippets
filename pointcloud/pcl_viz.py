@@ -10,6 +10,7 @@ import numpy as np
 from utils import load_points, get_prefix
 
 if __name__ == '__main__':
+    # o3d.io.read_point_cloud("/media/miro/WD/kucl_dataset/indoor/_scans/_scan0029.txt", format='xyz')  # (target_path, format=format)
     parser = argparse.ArgumentParser()
     parser.add_argument("pcl_path", help="Path to pointcloud file (.pcd | .xyz | .txt)", type=str)
     args = parser.parse_args()
@@ -24,7 +25,6 @@ if __name__ == '__main__':
 
     pcd = load_points(args.pcl_path, "pcd" if ext[1:] == "pcd" else "xyz")
     o3d.visualization.draw_geometries([pcd])
-    print(len(pcd.points))
 
     # pcd_down = pcd.voxel_down_sample(voxel_size=0.5)
     # o3d.visualization.draw_geometries([pcd_down])
