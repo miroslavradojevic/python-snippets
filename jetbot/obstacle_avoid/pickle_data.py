@@ -1,29 +1,32 @@
 #!/usr/bin/env python
+import argparse
 import sys
 import os
 import cv2
 import pickle
 import numpy as np
 from matplotlib.image import imread
+from os.path import isdir, join, exists, splitext
+from os import listdir
+from pathlib import Path
 
-data_dir = "/media/miro/WD/jetbot_obstacle_avoidance/data"
-prefix = "data1"
-size = 224
+
+# -d /media/miro/WD/jetbot_obstacle_avoidance/data
+# -d /media/miro/WD/L-CAS/LCAS_1200/data
+# =size 224
 
 if __name__ == "__main__":
-    # if len(sys.argv) == 2:
-    #     data_dir = sys.argv[1]
-    if not os.path.isdir(data_dir):
-        exit(data_dir + " is not a directory")
+    parser = argparse.ArgumentParser(help="")
+    parser.add_argument("-d", type=str, required=True, help="Data directory")
+    parser.add_argument("-size", type=int, default=0, help="Size of the output, no resize for size set to 0")
+    parser.add_argument("-prefix", type=str, default="data", help="Pickle file prefix")
+    args = parser.parse_args()
 
-    # if len(sys.argv) == 3:
-    #     try:
-    #         size = int(sys.argv[2])
-    #     except ValueError:
-    #         sys.exit(sys.argv[2] + " is not integer value")
+    if not exists(args.d):
+        exit("{} does not exist".format(args.d))
 
-    if not os.path.exists(data_dir):
-        sys.exit(data_dir + " does not exist")
+    if not isdir(args.d):
+        exit("{} is not a directory".format(args.d))
 
     name_to_idx = dict()
     idx_to_name = dict()
@@ -32,20 +35,22 @@ if __name__ == "__main__":
     X = []
     y = []
 
-    for c in os.listdir(data_dir):
-        c_dir = os.path.join(data_dir, c)
-        if os.path.isdir(c_dir):
+    for c in listdir(args.d):
+        c_dir = join(args.d, c)
+        if isdir(c_dir):
             name_to_idx[c] = class_count
             idx_to_name[class_count] = c
-            for f in os.listdir(c_dir):
-                if os.path.splitext(f)[1] == ".jpg":
-                    print(os.path.join(data_dir, c, f))
-                    im = imread(os.path.join(data_dir, c, f))
+            for f in listdir(c_dir):
+                if splitext(f)[-1] == ".jpg":
+                    print(join(args.d, c, f))
+                    im = imread(join(args.d, c, f))
+                    # print("{} {} {} {} {}".format(type(im), im.shape, im[0].dtype, np.amin(im), np.amax(im)))
                     # im: <class 'numpy.ndarray'> (2464, 3280, 3) uint8 0 255
 
                     # 2 ways to resize image: opencv and scikit-image
-                    im = cv2.resize(im, (size, size), interpolation=cv2.INTER_CUBIC)
-                    # im: <class 'numpy.ndarray'> (224, 224, 3) uint8 0 255
+                    if args.size != 0:
+                        im = cv2.resize(im, (args.size, args.size), interpolation=cv2.INTER_CUBIC)
+                        # im: <class 'numpy.ndarray'> (224, 224, 3) uint8 0 255
 
                     X.append(im)
                     y.append(class_count)
@@ -60,6 +65,6 @@ if __name__ == "__main__":
     print("y", y[0].dtype, y.shape)
 
     # pickle data
-    with open(os.path.join(data_dir, prefix + "_" + str(size) + '.pckl'), 'wb') as f:
+    with open(join(Path(args.d).parent, args.prefix + "_" + str(args.size) + '.pckl'), 'wb') as f:
         pickle.dump([X, y, name_to_idx, idx_to_name], f)
         print("Exported to ", f.name)
