@@ -14,8 +14,7 @@ from sklearn.model_selection import train_test_split
 from matplotlib.backends.backend_pdf import PdfPages
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout, GlobalAveragePooling2D, \
-    BatchNormalization
+from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout, GlobalAveragePooling2D, BatchNormalization
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras import Model
@@ -158,42 +157,6 @@ if __name__ == "__main__":
 
             img_shape = X_train[0].shape
 
-        # elif isdir(args.data_path):
-        #     train_path = join(args.data_path, "train")
-        #     test_path = join(args.data_path, "test")
-        #     img_shape = read_shape_first_train_image(args.data_path)
-        #
-        #     image_gen = ImageDataGenerator(rotation_range=20,  # rotate the image 20 degrees
-        #                                    width_shift_range=0.10,  # Shift the pic width by a max of 5%
-        #                                    height_shift_range=0.10,  # Shift the pic height by a max of 5%
-        #                                    rescale=1. / 255,  # Rescale the image by normalzing it.
-        #                                    shear_range=0.1,  # Shear means cutting away part of the image (max 10%)
-        #                                    zoom_range=0.1,  # Zoom in by 10% max
-        #                                    horizontal_flip=True,  # Allo horizontal flipping
-        #                                    fill_mode='nearest')  # Fill in missing pixels with the nearest filled value
-        #
-        #     os.makedirs(os.path.join(out_dir, "augs"))
-        #
-        #     train_image_gen = image_gen.flow_from_directory(train_path,
-        #                                                     target_size=img_shape[:2],
-        #                                                     color_mode='rgb',
-        #                                                     batch_size=batch_size,
-        #                                                     class_mode='binary',
-        #                                                     save_to_dir=os.path.join(out_dir, "augs"),
-        #                                                     save_prefix='train',
-        #                                                     save_format='jpg')
-        #
-        #     test_image_gen = image_gen.flow_from_directory(test_path,
-        #                                                    target_size=img_shape[:2],
-        #                                                    color_mode='rgb',
-        #                                                    batch_size=batch_size,
-        #                                                    class_mode='binary',
-        #                                                    save_to_dir=os.path.join(out_dir, "augs"),
-        #                                                    save_prefix='val',
-        #                                                    save_format='jpg',
-        #                                                    shuffle=False)
-        #
-        #     print(train_image_gen.class_indices, test_image_gen.class_indices)
     else:
         exit("Path {} does not exist".format(args.data_path))
 
@@ -215,10 +178,8 @@ if __name__ == "__main__":
     early_stop = EarlyStopping(monitor='val_loss', patience=5)
 
     if isfile(args.data_path):
-        model.fit(X_train, y_cat_train, validation_data=(X_test, y_cat_test), epochs=max_epochs, batch_size=batch_size) # , callbacks=[early_stop]
-    # else:
-    #     model.fit(train_image_gen, validation_data=test_image_gen, epochs=max_epochs,
-    #               batch_size=batch_size)  # , callbacks=[early_stop]
+        model.fit(X_train, y_cat_train, validation_data=(X_test, y_cat_test), epochs=max_epochs,
+                  batch_size=batch_size)  # , callbacks=[early_stop]
 
     # print(losses.head())
     # print(model.evaluate(X_test, y_cat_test, verbose=1))
