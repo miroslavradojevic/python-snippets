@@ -1,16 +1,19 @@
 # Use opencv to connect to USB camera
 import cv2
 import time
+from datetime import datetime
 
 # Connects to your computer's default camera
 cap = cv2.VideoCapture(0)
 
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+fps = 24
+
 
 # MACOS AND LINUX: *'XVID' (MacOS users may want to try VIDX as well)
 # WINDOWS *'VIDX'
-writer = cv2.VideoWriter("capture_" + time.strftime("%Y%m%d-%H%M%S") + ".mp4", cv2.VideoWriter_fourcc(*'XVID'), 15, (width, height))
+writer = cv2.VideoWriter("capture_" + time.strftime("%Y%m%d-%H%M%S") + ".mp4", cv2.VideoWriter_fourcc(*'XVID'), fps, (width, height))
 
 while True:
     # Capture frame-by-frame
@@ -18,6 +21,7 @@ while True:
 
     # Write the video
     writer.write(frame)
+    print("{}".format(datetime.now()))
 
     cv2.putText(frame, text='Recording...',
                 org=(int(0.7*width), int(0.1*height)), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
