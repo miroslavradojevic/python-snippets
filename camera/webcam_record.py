@@ -8,7 +8,7 @@ cap = cv2.VideoCapture(0)
 
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fps = 24
+fps = 32
 
 
 # MACOS AND LINUX: *'XVID' (MacOS users may want to try VIDX as well)
