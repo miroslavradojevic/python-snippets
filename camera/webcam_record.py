@@ -8,7 +8,7 @@ cap = cv2.VideoCapture(0)
 
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fps = 32
+fps = 24
 
 
 # MACOS AND LINUX: *'XVID' (MacOS users may want to try VIDX as well)
@@ -21,26 +21,27 @@ while True:
 
     # Write the video
     writer.write(frame)
+
     print("{}".format(datetime.now()))
-
-    cv2.putText(frame, text='Recording...',
-                org=(int(0.7*width), int(0.1*height)), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                fontScale=1,
-                color=(0, 0, 255), thickness=1,
-                lineType=cv2.LINE_AA)
-
-    cv2.putText(frame, text='Press "q" to exit',
-                org=(0, int(0.95 * height)), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                fontScale=1,
-                color=(255, 255, 255), thickness=1,
-                lineType=cv2.LINE_AA)
-
-    # Display the resulting frame
-    cv2.imshow('frame', frame)
-
-    # Quit with the "q" button on a keyboard
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+    #
+    # cv2.putText(frame, text='Recording...',
+    #             org=(int(0.7*width), int(0.1*height)), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+    #             fontScale=1,
+    #             color=(0, 0, 255), thickness=1,
+    #             lineType=cv2.LINE_AA)
+    #
+    # cv2.putText(frame, text='Press "q" to exit',
+    #             org=(0, int(0.95 * height)), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+    #             fontScale=1,
+    #             color=(255, 255, 255), thickness=1,
+    #             lineType=cv2.LINE_AA)
+    #
+    # # Display the resulting frame
+    # cv2.imshow('frame', frame)
+    #
+    # # Quit with the "q" button on a keyboard
+    # if cv2.waitKey(1) & 0xFF == ord('q'):
+    #     break
 
 cap.release()
 writer.release()
