@@ -11,21 +11,21 @@ import numpy as np
 
 
 class Camera(SingletonConfigurable):
-    
     value = traitlets.Any()
-    
+
     # config
     fps = traitlets.Integer(default_value=21).tag(config=True)
     capture_width = traitlets.Integer(default_value=3280).tag(config=True)
     capture_height = traitlets.Integer(default_value=2464).tag(config=True)
-    width = traitlets.Integer(default_value=3280//2).tag(config=True) # 224 resize for 224x224 neural net
-    height = traitlets.Integer(default_value=2464//2).tag(config=True) # 224
+    width = traitlets.Integer(default_value=3280).tag(config=True)  # // 4 224 resize for 224x224 neural net
+    height = traitlets.Integer(default_value=2464).tag(config=True)  # // 4 224
 
     def __init__(self, *args, **kwargs):
         self.value = np.empty((self.height, self.width, 3), dtype=np.uint8)
         super(Camera, self).__init__(*args, **kwargs)
 
         try:
+            print(self._gst_str())
             self.cap = cv2.VideoCapture(self._gst_str(), cv2.CAP_GSTREAMER)
             re, image = self.cap.read()
             if not re:
@@ -47,11 +47,11 @@ class Camera(SingletonConfigurable):
                 self.value = image
             else:
                 break
-                
+
     def _gst_str(self):
-        return 'nvarguscamerasrc ! video/x-raw(memory:NVMM), width=%d, height=%d, format=(string)NV12, framerate=(fraction)%d/1 ! nvvidconv ! video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! videoconvert ! appsink' % (
-                self.capture_width, self.capture_height, self.fps, self.width, self.height)
-    
+        return 'nvarguscamerasrc ! video/x-raw(memory:NVMM), width=%d, height=%d, format=(string)NV12, framerate=(fraction)%d/1 ! nvvidconv ! video/x-raw, width=(int)%d, height=(int)%d, format=(string)RGBx ! videoconvert ! appsink' % (
+            self.capture_width, self.capture_height, self.fps, self.width, self.height)
+
     def start(self):
         if not self.cap.isOpened():
             self.cap.open(self._gst_str(), cv2.CAP_GSTREAMER)
@@ -64,26 +64,39 @@ class Camera(SingletonConfigurable):
             self.cap.release()
         if hasattr(self, 'thread'):
             self.thread.join()
-            
+
     def restart(self):
         self.stop()
         self.start()
-        
+
+
 if __name__ == '__main__':
-    dir_path = os.path.join(expanduser("~"), os.path.basename(__file__))
-    
+    # fps = 24  # TODO add as argument
+    dir_path = os.path.join(expanduser("~"), os.path.basename(__file__) + "_" + time.strftime("%Y%m%d-%H%M%S"))
+
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
-    
+
     cam = Camera()
 
     print("\n\nExporting to ", dir_path)
+
+    t0 = None
+    t1 = None
+
     try:
         while True:
-            img_path = os.path.join(dir_path, 'cam_'+ time.strftime("%Y%m%d-%H%M%S") +'.jpg')
-            print(img_path) 
-            cv2.imwrite(img_path, cam.value)
-            time.sleep(60)
+            if t0 is None:
+                t0 = int(time.time() * 1000.0)
+            else:
+                t1 = int(time.time() * 1000.0)
+                img_path = os.path.join(dir_path, 'cam_' + str(t1) + '.jpg')
+                cv2.imwrite(img_path, cam.value)
+                dt = t1 - t0  # milliseconds
+                t0 = t1
+                if dt>0:
+                    print("FPS={:.2f}".format(1.0 / (dt / 1000.0)))  # img_path
+
+            # time.sleep(1e-6)
     except KeyboardInterrupt:
         cam.stop()
-    
