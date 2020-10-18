@@ -40,7 +40,7 @@ class Camera(SingletonConfigurable):
         try:
             print(self._gst_str())
             self.cap = cv2.VideoCapture(self._gst_str(), cv2.CAP_GSTREAMER)
-            
+
             if self.write_video:
                 # https://www.geeksforgeeks.org/saving-a-video-using-opencv/
                 cap_width = int(self.cap.get(3))

@@ -20,7 +20,7 @@ angle = 0.0
 angle_last = 0.0
 
 speed_gain = 0.35  # min=0.0, max=1.0, step=0.01
-steering_gain = 0.01  # min=0.0, max=1.0, step=0.01
+steering_gain = 0.02  # min=0.0, max=1.0, step=0.01
 steering_dgain = 0.01  # min=0.0, max=0.5, step=0.001
 steering_bias = 0.0  # min=-0.3, max=0.3, step=0.01
 
