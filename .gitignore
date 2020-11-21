@@ -7,3 +7,4 @@ venv_image
 *.jpg
 .vscode/
 __pycache__
+gmail/token.pickle
