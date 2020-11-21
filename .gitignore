@@ -1,5 +1,7 @@
 .idea
 venv
+venv_gmail
+venv_image
 *.mp4
 *.h5
 *.jpg
