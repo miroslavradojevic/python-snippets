@@ -1,0 +1,56 @@
+import lib.Maths;
+import lib.Vdu;
+module Tree
+{
+    const
+        MODE = 31, | display mode |
+        OFFSET = 30, | display offset |
+        LEVELS = 7, | branch levels |
+        VARS = 1000; | variations |
+
+    int xmax, ymax, xshift, yshift; | screen parameters |
+
+    proc variation (real value, real deviation) real
+    {
+        return value * (1 + deviation * (0.5 - 1.0 * (Maths.random () mod (VARS + 1)) / VARS));
+    }
+
+    proc branch (int level , real length, real angle, int xs, int ys)
+    {
+        int xe : = xs + length * Maths.fn.cos(angle);
+        int ye : = ys + length * Maths.fn.sin(angle);
+
+        Vdu.plot (Vdu.P_POINT + Vdu.P_PLOT_F_ABS, xs l_sl xshift, ys l_sl yshift);
+        Vdu.plot (Vdu.P_PLOT_F_ABS, xe l_sl xshift, ye l_sl yshift);
+
+        if level > 1 + Maths.random () mod 2
+        {
+            real scale := variation (0.65, 0.25);
+            int branches := level - Maths.random () mod 3;
+            if branches <= 0 return;
+            real range := variation (1.5, 0.2);
+            for int i := 0 step inc (i) while i <= branches
+            {
+                real factor := variation (0.5, 0.8);
+                if i = branches factor := 0;
+                branch (level - 1,
+                        variation (length * scale, 0.2),
+                        variation (angle, 0.3) + i * range / branches - range / 2,
+                        xe - (xe - xs) * factor, ye - (ye - ys) * factor);
+            }
+        }
+    }
+    export proc ~start ()
+    {
+        Vdu.mode (MODE);
+        xshift := Vdu.mode_var (MODE, Vdu.MV_X_EIG_FACTOR);
+        yshift := Vdu.mode_var (MODE, Vdu.MV_Y_EIG_FACTOR);
+        xmax : = Vdu.mode_var (MODE, Vdu.MV_X_WINDOW_LIMIT) + 1;
+        ymax : = Vdu.mode_var (MODE, Vdu.MV_Y_WINDOW_LIMIT) + 1;
+        Vdu.g_colour (0, 7);
+        Vdu.plot (Vdu.P_POINT + Vdu.P_PLOT_F_ABS, OFFSET l_sl xshift, OFFSET l_sl yshift);
+        Vdu.plot (Vdu.P_RECTANGLE_FILL + Vdu.P_PLOT_F_ABS, (xmax - OFFSET - 1) l_sl xshift, (ymax - OFFSET - 1) l_sl yshift);
+        Vdu.g_colour (0, 0);
+        branch (LEVELS, (ymax - OFFSET) / 3, Maths.fn.asn(1), (xmax - OFFSET) / 2, OFFSET);
+    }
+}
