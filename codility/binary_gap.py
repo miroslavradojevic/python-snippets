@@ -18,7 +18,8 @@ def readInt(input):
 
 def binaryGap(input_int):
     # Find longest sequence of zeros in binary representation of an integer
-    # A binary gap within a positive integer N is any maximal sequence of consecutive zeros that is surrounded by ones at both ends in the binary representation of N
+    # A binary gap within a positive integer N is any maximal sequence of consecutive zeros 
+    # that is surrounded by ones at both ends in the binary representation of N
 
     # convert integer into binary representation
     input_val_bin = bin(input_int).replace('0b', '')
