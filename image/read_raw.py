@@ -60,7 +60,7 @@ def read_raw(binary_file_name, image_size, sitk_pixel_type, image_spacing=None, 
     return img # SimpleITK.SimpleITK.Image
 
 if __name__=='__main__':
-    psr = argparse.ArgumentParser(description='Read raw image')
+    psr = argparse.ArgumentParser(description='Read .raw binary image')
     psr.add_argument('--f', type=str, required=True, help='Path to the .raw file (raw binary image file)')
     psr.add_argument("--big_endian", type=lambda v: v.lower() in {"1", "true"}, required=True, help="\'false\' for little endian or \'true\' for big endian")
     psr.add_argument('--size', required=True, nargs='+', help="width, height", type=int)
@@ -68,8 +68,6 @@ if __name__=='__main__':
 
     args = psr.parse_args()
     
-    print(args)
-
     if not exists(args.f):
         print(f"File {args.f} could not be found")
         exit(1)
