@@ -1,75 +1,77 @@
 #!/usr/bin/env python3
+import sys
+import numpy as np
 import argparse
 import SimpleITK as sitk
 import cv2
 from numpy import uint8
 from read.image import string_to_pixelType, my_func, read_raw
-from os.path import exists, splitext
+from os.path import exists, splitext, join
+from os import makedirs
+from time import strftime
 from math import inf
+from skimage.feature import hessian_matrix, hessian_matrix_eigvals
+import matplotlib.pyplot as plt
 
-print(sitk.__version__)
-
-def raw_to_tif(file, size, big_endian, type):
+def raw_to_npy(raw_path, raw_size, raw_big_endian, raw_type, raw_min = None, raw_max = None):
     # Read the image
-    image = read_raw(binary_file_name=args.f,
-        image_size=args.sz,
-        sitk_pixel_type=string_to_pixelType[args.type],
-        big_endian=args.big_endian)
-    
-    print(f"H={image.GetHeight()}, W={image.GetWidth()}, D={image.GetDepth()}")
+    image = read_raw(binary_file_name=raw_path,
+        image_size=raw_size,
+        sitk_pixel_type=string_to_pixelType[raw_type],
+        big_endian=raw_big_endian)
 
-    # save image
-    out_file_name = splitext(args.f)[0] + "_converted.tif"
+    image_npy = sitk.GetArrayFromImage(image)
+
+    if raw_min is not None:
+        image_npy[image_npy<raw_min] = raw_min
+    
+    if raw_max is not None:
+        image_npy[image_npy>raw_max] = raw_max
+
+    return image_npy
+
+def raw_to_tif(raw_path, raw_size, raw_big_endian, raw_type, raw_min = None, raw_max = None):
+    # Read the image
+    image = read_raw(binary_file_name=raw_path,
+        image_size=raw_size,
+        sitk_pixel_type=string_to_pixelType[raw_type],
+        big_endian=raw_big_endian)
+    
+    # print(f"{type(image)} H={image.GetHeight()}, W={image.GetWidth()}, D={image.GetDepth()}")
+
+    # crop
+    th = sitk.ThresholdImageFilter()
+    if raw_min is not None:
+        th.SetLower(raw_min)
+    if raw_max is not None:
+        th.SetUpper(raw_max)
+    if raw_min is not None or raw_max is not None:
+        image = th.Execute(image)
+
+    # save image as tif stack
+    out_file_name = splitext(args.f)[0] + f"_converted_crop_{raw_min}_{raw_max}.tif"
     sitk.WriteImage(image, out_file_name)
     print(f"Exported to\t{out_file_name}")
 
-def raw_to_tif_cropped(file, size, big_endian, type, min_val, max_val):
-    # Read the image
-    image = read_raw(binary_file_name=args.f,
-        image_size=args.sz,
-        sitk_pixel_type=string_to_pixelType[args.type],
-        big_endian=args.big_endian)
-    
-    # crop
-    th = sitk.ThresholdImageFilter()
-    th.SetLower(min_val)
-    th.SetUpper(max_val)
-    image_out = th.Execute(image)
-
-    # save image
-    out_file_name = splitext(args.f)[0] + f"_cropped_{min_val}_{max_val}.tif"
-    sitk.WriteImage(image_out, out_file_name)
-    print(f"Exported to\t{out_file_name}")
-
-def detect_battery_rectangle(img_path):
-    img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
-    print(type(img), img.shape, img.dtype)
-    if img.dtype == uint8:
-        print("yes")
-    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    
+def detect_battery_rectangle(img):
     img_integral = cv2.integral(img)
-    print(type(img_integral), img_integral.shape, img_integral.dtype)
-    
     img_height, img_width = img.shape
     
-    w_min = int(round(img_width * 0.2))
-    w_max = int(round(img_width * 0.8))
+    w_min = int(round(img_width * 0.10))
+    w_max = int(round(img_width * 0.95))
 
-    h_min = int(round(img_height * 0.2))
-    h_max = int(round(img_height * 0.8))
+    h_min = int(round(img_height * 0.10))
+    h_max = int(round(img_height * 0.95))
 
     x1_min = int(round(img_width * 0.05))
     x1_max = int(round(img_width * 0.5))
     x2_min = int(round(img_width * 0.5))
     x2_max = int(round(img_width * 0.95))
-    print(x1_min, x1_max, x2_min, x2_max)
 
-    y1_min = int(round(img_height * 0.1))
+    y1_min = int(round(img_height * 0.05))
     y1_max = int(round(img_height * 0.5))
     y2_min = int(round(img_height * 0.5))
-    y2_max = int(round(img_height * 0.9))
-    print(y1_min, y1_max, y2_min, y2_max)
+    y2_max = int(round(img_height * 0.95))
 
     step = 1
     score_max = -inf
@@ -80,17 +82,10 @@ def detect_battery_rectangle(img_path):
     for x1 in range(x1_min, x2_max, step):
         for x2 in range(x2_min, x2_max, step):
             if x2>=x1 and w_min <= x2-x1 <= w_max:
-                # compute s1,...,s9
                 # sum = bottom_right + top_left - top_right - bottom_left
-                s1 = img_integral[-1,x1] + img_integral[0,0] - img_integral[0,x1] - img_integral[-1,0]
-                # s1 /= float(x1*img_height)
-                
-                s2 = img_integral[-1,x2] + img_integral[0,x1] - img_integral[0,x2] - img_integral[-1,x1]
-                # s2 /= float((x2-x1)*img_height)
-
-                s3 = img_integral[-1,-1] + img_integral[0,x2] - img_integral[0,-1] - img_integral[-1,x2]
-                # s3 /= float((x2-x1)*img_height)
-
+                s1 = (img_integral[-1,x1] + img_integral[0,0] - img_integral[0,x1] - img_integral[-1,0])/float(x1*img_height)
+                s2 = (img_integral[-1,x2] + img_integral[0,x1] - img_integral[0,x2] - img_integral[-1,x1])/float((x2-x1)*img_height)
+                s3 = (img_integral[-1,-1] + img_integral[0,x2] - img_integral[0,-1] - img_integral[-1,x2])/float((img_width-x2)*img_height)
                 score = s2 - 0.5 * (s1 + s3)
                 if score > score_max:
                     score_max = score
@@ -103,40 +98,136 @@ def detect_battery_rectangle(img_path):
     for y1 in range(y1_min, y1_max, step):
         for y2 in range(y2_min, y2_max, step):
             if y2>=y1 and h_min <= y2-y1 <= h_max:
-                s1 = img_integral[-1,x1] + img_integral[0,0] - img_integral[0,x1] - img_integral[-1,0]
-                s2 = img_integral[-1,x2] + img_integral[0,x1] - img_integral[0,x2] - img_integral[-1,x1]
-                s3 = img_integral[-1,-1] + img_integral[0,x2] - img_integral[0,-1] - img_integral[-1,x2]
-
+                s1 = (img_integral[y1,-1] + img_integral[0,0] - img_integral[y1,0] - img_integral[0,-1])/float(y1*img_width)
+                s2 = (img_integral[y2,-1] + img_integral[y1,0] - img_integral[y2,0] - img_integral[y1,-1])/float((y2-y1)*img_width)
+                s3 = (img_integral[-1,-1] + img_integral[y2,0] - img_integral[-1,0] - img_integral[y2,-1])/float((img_height-y2)*img_width)
                 score = s2 - 0.5 * (s1 + s3)
                 if score > score_max:
                     score_max = score
-                    x1_ = x1
-                    x2_ = x2
+                    y1_ = y1
+                    y2_ = y2
 
-    img_viz = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-    p1 = (x1_,0)
-    p2 = (x1_,img_height)
-    img_viz = cv2.line(img_viz, p1, p2, (0, 255, 255), 2)
-
-    p1 = (x2_,0)
-    p2 = (x2_,img_height)
-    img_viz = cv2.line(img_viz, p1, p2, (0, 255, 255), 2)
-
-    p1 = (0, y1_min)
-    p2 = (img_width, y1_min)
-    img_viz = cv2.line(img_viz, p1, p2, (0, 255, 255), 2)
-
-    p1 = (0, y2_max)
-    p2 = (img_width, y2_max)
-    img_viz = cv2.line(img_viz, p1, p2, (0, 255, 255), 2)
-
-    cv2.imwrite("test.jpg", img_viz) 
+    return x1_,x2_,y1_,y2_
     
+def detect_ridges(gray, sigma=1.0):
+    H_elems = hessian_matrix(gray, sigma=sigma, order='rc')
+    maxima_ridges, minima_ridges = hessian_matrix_eigvals(H_elems)
+    return maxima_ridges, minima_ridges
+
+def smooth(x,window_len=11,window='hanning'):
+    """smooth the data using a window with requested size.
+    
+    This method is based on the convolution of a scaled window with the signal.
+    The signal is prepared by introducing reflected copies of the signal 
+    (with the window size) in both ends so that transient parts are minimized
+    in the begining and end part of the output signal.
+    
+    input:
+        x: the input signal 
+        window_len: the dimension of the smoothing window; should be an odd integer
+        window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
+            flat window will produce a moving average smoothing.
+
+    output:
+        the smoothed signal
+        
+    example:
+
+    t=linspace(-2,2,0.1)
+    x=sin(t)+randn(len(t))*0.1
+    y=smooth(x)
+    
+    see also: 
+    
+    numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
+    scipy.signal.lfilter
+ 
+    TODO: the window parameter could be the window itself if an array instead of a string
+    NOTE: length(output) != length(input), to correct this: return y[(window_len/2-1):-(window_len/2)] instead of just y.
+    """
+
+    if x.ndim != 1:
+        raise ValueError("smooth only accepts 1 dimension arrays.")
+
+    if x.size < window_len:
+        raise ValueError("Input vector needs to be bigger than window size.")
+
+    if window_len<3:
+        return x
+
+    if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+        raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
+
+    s=np.r_[x[window_len-1:0:-1],x,x[-2:-window_len-1:-1]]
+    #print(len(s))
+    if window == 'flat': #moving average
+        w=np.ones(window_len,'d')
+    else:
+        w=eval('numpy.'+window+'(window_len)')
+
+    y=np.convolve(w/w.sum(),s,mode='valid')
+    return y
+
+def plot_images(*images):
+    images = list(images)
+    n = len(images)
+    fig, ax = plt.subplots(ncols=n, sharey=True)
+    for i, img in enumerate(images):
+        ax[i].imshow(img, cmap='gray')
+        ax[i].axis('off')
+    plt.subplots_adjust(left=0.03, bottom=0.03, right=0.97, top=0.97)
+    plt.show()
+
+def detect_cells(img, gap_width=4, nr_cells=18):
+    img_integral = cv2.integral(img)
+    img_height, img_width = img.shape
+    step = 1
+    x_ = [None] *  (nr_cells-1)
+
+    div_min=int(round(img_width/nr_cells*0.8))
+    div_max=int(round(img_width/nr_cells*1.5))
+
+    for i in range(0, nr_cells-1):
+        score_max = -inf
+        for w in range(div_min, div_max, step):
+            x1 = w + ((x_[i-1]+gap_width) if i!=0 else 0)
+            if x1 <= img_width:
+                x2 = x1 + gap_width
+                s1 = (img_integral[-1,x1] + img_integral[0,0] - img_integral[0,x1] - img_integral[-1,0])/float(x1*img_height)
+                s2 = (img_integral[-1,x2] + img_integral[0,x1] - img_integral[0,x2] - img_integral[-1,x1])/float((x2-x1)*img_height)
+                s3 = (img_integral[-1,-1] + img_integral[0,x2] - img_integral[0,-1] - img_integral[-1,x2])/float((img_width-x2)*img_height)
+                score = 0.5 * (s1 + s3) - s2
+                if score > score_max:
+                    score_max = score
+                    x_[i] = x1
+    return x_
+
+def extract_patches(img, cell_centroids, patch_width=64, patch_height=64):
+    if img.ndim!=3:
+        print("Input image needs to be 3D image stack")
+        return
+    
+    if img.dtype != uint8:
+        pass
+
+    out_dir = f"cell_patches_{patch_width}x{patch_height}"
+    if not exists(out_dir):
+        makedirs(out_dir) 
+
+    for layer in range(img.shape[0]):
+        cell_cnt = 1
+        for cc in cell_centroids:
+            yp = int(round(cc[1]))
+            xp = int(round(cc[0]))
+            patch = img[layer, yp-patch_height//2:yp+patch_height//2, xp-patch_width//2:xp+patch_width//2]
+            cv2.imwrite(join(out_dir, f"patch_layer{layer+1}_cell{cell_cnt}.tif"), patch)
+            cell_cnt += 1
+
 
 if __name__=='__main__':
     psr = argparse.ArgumentParser(description='EV battery image analysis')
     psr.add_argument('-m', type=str, required=True, help='Select method')
-    psr.add_argument('-f', type=str, required=False, help='Path to the input image file (image stack, binary raw)')
+    psr.add_argument('-f', type=str, required=True, help='Path to the input image file (image stack, binary raw)')
     psr.add_argument('-sz', required=False, nargs='+', help="(width,height,length)", type=int)
     psr.add_argument("-big_endian", required=False, type=lambda v: v.lower() in {"1", "true"}, default=False, help="\'false\' for little-endian or \'true\' for big-endian")
     psr.add_argument('-type', required=False, default="sitkFloat32", help="SimpleITK pixel type (default: sitkFloat32)")
@@ -146,55 +237,80 @@ if __name__=='__main__':
 
     method = args.m.upper()
 
-    if method == "RAW_TO_TIF":
-        if not any(d is None for d in (args.f, args.sz, args.big_endian, args.type)):
-            if exists(args.f):
-                if splitext(args.f)[1].upper() ==  ".RAW":
-                    # read input .raw image and save as .tif
-                    raw_to_tif(args.f, args.sz, args.big_endian, args.type)
-                else:
-                    print(f"File extension must be .raw")
-            else:
-                print(f"File {args.f} could not be found")
-        else:
-            print("Parameters are missing")
-    
-    elif method == "RAW_TO_TIF_CROPPED":
-        if not any(d is None for d in (args.f, args.sz, args.big_endian, args.type)):
-            if exists(args.f):
-                if splitext(args.f)[1].upper() ==  ".RAW":
-                    # read input .raw image, crop between [min_val, max_val] and save as .tif
-                    raw_to_tif_cropped(args.f, args.sz, args.big_endian, args.type, 0.00, 0.05)
-                else:
-                    print(f"File extension must be .raw")
-            else:
-                print(f"File {args.f} could not be found")
-        else:
-            print("Parameters are missing")        
+    if any(d is None for d in (args.f, args.sz, args.big_endian, args.type)):
+        sys.exit("RAW image parameters are found to be missing")
+
+    if not exists(args.f):
+        sys.exit(f"File {args.f} could not be found")
         
-    elif method == "RAW_TO_NUMPY":
-        # sitk.GetArrayFromImage
-        # pass
-        if not any(d is None for d in (args.f, args.sz, args.big_endian, args.type)):
-            # raw_to_numpy(args.f, args.sz, args.big_endian, args.type)
-            pass
-        else:
-            print("Parameters are missing")
-    elif method == "TIF_TO_NUMPY":
-        pass
-    elif method == "DETECT_BATTERY_RECTANGLE":
-        if args.f is not None:
-            if exists(args.f):
-                if splitext(args.f)[1].upper() ==  ".TIF":
-                    detect_battery_rectangle(args.f)
-                else:
-                    print(f"File extension must be .tif")
-            else:
-                print(f"File {args.f} could not be found")
-        else:
-            print("Input image is missing")
-    elif method == "TEST":
-        print("Test")
+    if splitext(args.f)[1].upper() !=  ".RAW":
+        sys.exit(f"File extension must be .raw")
+
+    if method == "RAW2TIF":
+        raw_to_tif(args.f, args.sz, args.big_endian, args.type)# , 0.00, 0.05      
+    elif method == "RAW2NPY":
+        img = raw_to_npy(args.f, args.sz, args.big_endian, args.type)
+        print(type(img), img.shape)
+    elif method == "BATTERY":
+        img = raw_to_npy(args.f, args.sz, args.big_endian, args.type, 0.00, 0.05)
+        img = np.median(img,0)
+        
+        x1,x2,y1,y2 = detect_battery_rectangle(img)
+        print(x1, x2, y1, y2)
+        
+        # visualize battery detection
+        img_viz = np.round((img - img.min()) / (img.max() - img.min()) * 255).astype(uint8)
+        img_viz = cv2.cvtColor(img_viz, cv2.COLOR_GRAY2RGB)
+        ih,iw = img.shape
+        img_viz = cv2.line(img_viz, (x1,0), (x1,ih), (0, 255, 255), 2)
+        img_viz = cv2.line(img_viz, (x2,0), (x2,ih), (0, 255, 255), 2)
+        img_viz = cv2.line(img_viz, (0,y1), (iw,y1), (0, 255, 255), 2)
+        img_viz = cv2.line(img_viz, (0,y2), (iw,y2), (0, 255, 255), 2)
+        cv2.imwrite("battery_detection.jpg", img_viz) 
+        
+        # crop the rectangle
+        img = img[y1:y2, x1:x2]
+        
+        # visualize cropped battery
+        img_viz = np.round((img - img.min()) / (img.max() - img.min()) * 255).astype(uint8)
+        cv2.imwrite("battery_crop.jpg", img_viz)
+        
+    elif method=="CELLS":
+        img3d = raw_to_npy(args.f, args.sz, args.big_endian, args.type, 0.00, 0.05)
+        img = np.median(img3d,0)
+        x1,x2,y1,y2 = detect_battery_rectangle(img)
+        img_crop = img[y1:y2, x1:x2]
+        
+        x_vert = detect_cells(img_crop)
+        
+        # visualize vertical divisions
+        img_viz = np.round((img - img.min()) / (img.max() - img.min()) * 255).astype(uint8)
+        img_viz = cv2.cvtColor(img_viz, cv2.COLOR_GRAY2RGB)
+        ih,iw = img.shape
+        for xi in x_vert:
+            img_viz = cv2.line(img_viz, (x1+xi,0), (x1+xi,ih), (0, 255, 255), 2)
+            img_viz = cv2.line(img_viz, (x1+xi,0), (x1+xi,ih), (0, 255, 255), 2)
+        cv2.imwrite("cell_division.jpg", img_viz) 
+
+        # extract cells
+        cell_centroids = []
+        for i in range(len(x_vert)):
+            x_right = x_vert[i]
+            x_left = x_vert[i-1] if i!=0 else 0
+            cell_centroids.append((x1+0.5*(x_left+x_right), 0.5*(y1+y2)))
+        cell_centroids.append((x1+0.5*((x2-x1)+x_right), 0.5*(y1+y2)))
+
+        print(f"cell_centroids=\n{cell_centroids}")
+
+        # visualize cells
+        for cc in cell_centroids:
+            img_viz = cv2.circle(img_viz, tuple(map(int, cc)), 8, (0, 255, 0), -1)
+        cv2.imwrite("cell_centroids.jpg", img_viz)
+
+        patch_width = 100
+        patch_height = y2 - y1
+        extract_patches(img3d, cell_centroids, patch_width, patch_height)
+
     else:
         print(f"Method {method} not recognized")
 
