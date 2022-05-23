@@ -182,24 +182,44 @@ def detect_cells(img, gap_width=4, nr_cells=18):
     img_integral = cv2.integral(img)
     img_height, img_width = img.shape
     step = 1
-    x_ = [None] *  (nr_cells-1)
+    x_ = [None] *  (nr_cells+1)
 
     div_min=int(round(img_width/nr_cells*0.8))
-    div_max=int(round(img_width/nr_cells*1.5))
+    div_max=int(round(img_width/nr_cells*1.2))
+    div_boundary = int(round(img_width/nr_cells*0.5))
 
-    for i in range(0, nr_cells-1):
+    for i in range(0, nr_cells+1):
         score_max = -inf
-        for w in range(div_min, div_max, step):
-            x1 = w + ((x_[i-1]+gap_width) if i!=0 else 0)
-            if x1 <= img_width:
-                x2 = x1 + gap_width
-                s1 = (img_integral[-1,x1] + img_integral[0,0] - img_integral[0,x1] - img_integral[-1,0])/float(x1*img_height)
-                s2 = (img_integral[-1,x2] + img_integral[0,x1] - img_integral[0,x2] - img_integral[-1,x1])/float((x2-x1)*img_height)
-                s3 = (img_integral[-1,-1] + img_integral[0,x2] - img_integral[0,-1] - img_integral[-1,x2])/float((img_width-x2)*img_height)
-                score = 0.5 * (s1 + s3) - s2
-                if score > score_max:
-                    score_max = score
-                    x_[i] = x1
+        if i==0:
+            for w in range(0, div_boundary, step):
+                x1 = w #+ 0
+                if x1 <= img_width:
+                    x2 = x1 + gap_width
+                    s1 = (img_integral[-1,x1] + img_integral[0,0] - img_integral[0,x1] - img_integral[-1,0])/float(x1*img_height)
+                    s2 = (img_integral[-1,x2] + img_integral[0,x1] - img_integral[0,x2] - img_integral[-1,x1])/float((x2-x1)*img_height)
+                    s3 = (img_integral[-1,-1] + img_integral[0,x2] - img_integral[0,-1] - img_integral[-1,x2])/float((img_width-x2)*img_height)
+                    score = 0.5 * (s1 + s3) - s2
+                    if score > score_max:
+                        score_max = score
+                        x_[i] = x1
+                else:
+                    break
+
+        else:
+            for w in range(div_min, div_max, step):
+                x1 = w + (x_[i-1]+gap_width) #((x_[i-1]+gap_width) if i!=0 else 0)
+                if x1 <= img_width:
+                    x2 = x1 + gap_width
+                    s1 = (img_integral[-1,x1] + img_integral[0,0] - img_integral[0,x1] - img_integral[-1,0])/float(x1*img_height)
+                    s2 = (img_integral[-1,x2] + img_integral[0,x1] - img_integral[0,x2] - img_integral[-1,x1])/float((x2-x1)*img_height)
+                    s3 = (img_integral[-1,-1] + img_integral[0,x2] - img_integral[0,-1] - img_integral[-1,x2])/float((img_width-x2)*img_height)
+                    score = 0.5 * (s1 + s3) - s2
+                    if score > score_max:
+                        score_max = score
+                        x_[i] = x1
+                else:
+                    break
+
     return x_
 
 def extract_patches(img, cell_centroids, patch_width=64, patch_height=64):
@@ -223,76 +243,48 @@ def extract_patches(img, cell_centroids, patch_width=64, patch_height=64):
             cv2.imwrite(join(out_dir, f"patch_layer{layer+1}_cell{cell_cnt}.tif"), patch)
             cell_cnt += 1
 
+def viz_battery_detection(img, x1, x2, y1, y2):
+    # visualize battery boundaries
+    print(x1, x2, y1, y2)
+    img_viz = np.round((img - img.min()) / (img.max() - img.min()) * 255).astype(uint8)
+    img_viz = cv2.cvtColor(img_viz, cv2.COLOR_GRAY2RGB)
+    ih,iw = img.shape
+    img_viz = cv2.line(img_viz, (x1,0), (x1,ih), (0, 255, 255), 2)
+    img_viz = cv2.line(img_viz, (x2,0), (x2,ih), (0, 255, 255), 2)
+    img_viz = cv2.line(img_viz, (0,y1), (iw,y1), (0, 255, 255), 2)
+    img_viz = cv2.line(img_viz, (0,y2), (iw,y2), (0, 255, 255), 2)
+    cv2.imwrite("viz_battery_detection.jpg", img_viz) 
 
-if __name__=='__main__':
-    psr = argparse.ArgumentParser(description='EV battery image analysis')
-    psr.add_argument('-m', type=str, required=True, help='Select method')
-    psr.add_argument('-f', type=str, required=True, help='Path to the input image file (image stack, binary raw)')
-    psr.add_argument('-sz', required=False, nargs='+', help="(width,height,length)", type=int)
-    psr.add_argument("-big_endian", required=False, type=lambda v: v.lower() in {"1", "true"}, default=False, help="\'false\' for little-endian or \'true\' for big-endian")
-    psr.add_argument('-type', required=False, default="sitkFloat32", help="SimpleITK pixel type (default: sitkFloat32)")
-    # add min, max for cropping
+def viz_battery_division(img, x1, xvert):
+    # visualize vertical divisions
+    img_viz = np.round((img - img.min()) / (img.max() - img.min()) * 255).astype(uint8)
+    img_viz = cv2.cvtColor(img_viz, cv2.COLOR_GRAY2RGB)
+    ih,iw = img.shape
+    for xi in xvert:
+        img_viz = cv2.line(img_viz, (x1+xi,0), (x1+xi,ih), (0, 255, 255), 2)
+        img_viz = cv2.line(img_viz, (x1+xi,0), (x1+xi,ih), (0, 255, 255), 2)
+    cv2.imwrite("viz_battery_division.jpg", img_viz) 
 
-    args = psr.parse_args()
-
-    method = args.m.upper()
-
-    if any(d is None for d in (args.f, args.sz, args.big_endian, args.type)):
-        sys.exit("RAW image parameters are found to be missing")
-
-    if not exists(args.f):
-        sys.exit(f"File {args.f} could not be found")
-        
-    if splitext(args.f)[1].upper() !=  ".RAW":
-        sys.exit(f"File extension must be .raw")
-
-    if method == "RAW2TIF":
-        raw_to_tif(args.f, args.sz, args.big_endian, args.type)# , 0.00, 0.05      
-    elif method == "RAW2NPY":
-        img = raw_to_npy(args.f, args.sz, args.big_endian, args.type)
-        print(type(img), img.shape)
-    elif method == "BATTERY":
-        img = raw_to_npy(args.f, args.sz, args.big_endian, args.type, 0.00, 0.05)
-        img = np.median(img,0)
-        
+def extract_cells(img, nr_cells=18, gap_width=4, out_dir="patches", annot=None, viz=False):
         x1,x2,y1,y2 = detect_battery_rectangle(img)
-        print(x1, x2, y1, y2)
         
-        # visualize battery detection
-        img_viz = np.round((img - img.min()) / (img.max() - img.min()) * 255).astype(uint8)
-        img_viz = cv2.cvtColor(img_viz, cv2.COLOR_GRAY2RGB)
-        ih,iw = img.shape
-        img_viz = cv2.line(img_viz, (x1,0), (x1,ih), (0, 255, 255), 2)
-        img_viz = cv2.line(img_viz, (x2,0), (x2,ih), (0, 255, 255), 2)
-        img_viz = cv2.line(img_viz, (0,y1), (iw,y1), (0, 255, 255), 2)
-        img_viz = cv2.line(img_viz, (0,y2), (iw,y2), (0, 255, 255), 2)
-        cv2.imwrite("battery_detection.jpg", img_viz) 
-        
-        # crop the rectangle
-        img = img[y1:y2, x1:x2]
-        
-        # visualize cropped battery
-        img_viz = np.round((img - img.min()) / (img.max() - img.min()) * 255).astype(uint8)
-        cv2.imwrite("battery_crop.jpg", img_viz)
-        
-    elif method=="CELLS":
-        img3d = raw_to_npy(args.f, args.sz, args.big_endian, args.type, 0.00, 0.05)
-        img = np.median(img3d,0)
-        x1,x2,y1,y2 = detect_battery_rectangle(img)
+        if viz:
+            viz_battery_detection(img, x1, x2, y1, y2)
+
         img_crop = img[y1:y2, x1:x2]
         
-        x_vert = detect_cells(img_crop)
-        
-        # visualize vertical divisions
-        img_viz = np.round((img - img.min()) / (img.max() - img.min()) * 255).astype(uint8)
-        img_viz = cv2.cvtColor(img_viz, cv2.COLOR_GRAY2RGB)
-        ih,iw = img.shape
-        for xi in x_vert:
-            img_viz = cv2.line(img_viz, (x1+xi,0), (x1+xi,ih), (0, 255, 255), 2)
-            img_viz = cv2.line(img_viz, (x1+xi,0), (x1+xi,ih), (0, 255, 255), 2)
-        cv2.imwrite("cell_division.jpg", img_viz) 
+        x_vert = detect_cells(img_crop, gap_width, nr_cells)
 
-        # extract cells
+        print(x_vert, "\n", len(x_vert))
+
+        viz_battery_division(img, x1, x_vert)
+        
+        if True:
+            return
+
+
+
+        # extract cell centroids
         cell_centroids = []
         for i in range(len(x_vert)):
             x_right = x_vert[i]
@@ -310,6 +302,53 @@ if __name__=='__main__':
         patch_width = 100
         patch_height = y2 - y1
         extract_patches(img3d, cell_centroids, patch_width, patch_height)
+
+if __name__=='__main__':
+    psr = argparse.ArgumentParser(description='EV battery image analysis')
+    psr.add_argument('-m', type=str, required=True, help='Select method')
+    psr.add_argument('-f', type=str, required=True, help='Path to the input image file (image stack, binary raw)')
+    psr.add_argument('-sz', required=False, nargs='+', help="(width,height,length)", type=int)
+    psr.add_argument("-big_endian", required=False, type=lambda v: v.lower() in {"1", "true"}, default=False, help="\'false\' for little-endian or \'true\' for big-endian")
+    psr.add_argument('-type', required=False, default="sitkFloat32", help="SimpleITK pixel type (default: sitkFloat32)")
+    psr.add_argument('-min_val', required=False, default=0.00, help="Cropping range: min value")
+    psr.add_argument('-max_val', required=False, default=0.05, help="Cropping range: max value")
+
+    args = psr.parse_args()
+
+    method = args.m.upper()
+
+    if any(d is None for d in (args.f, args.sz, args.big_endian, args.type, args.min_val, args.max_val)):
+        sys.exit("RAW image parameters are found to be missing")
+
+    if not exists(args.f):
+        sys.exit(f"File {args.f} could not be found")
+        
+    if splitext(args.f)[1].upper() !=  ".RAW":
+        sys.exit(f"File extension must be .raw")
+
+    if method == "RAW2TIF":
+        raw_to_tif(args.f, args.sz, args.big_endian, args.type)# , 0.00, 0.05      
+    elif method == "RAW2NPY":
+        img = raw_to_npy(args.f, args.sz, args.big_endian, args.type)
+    elif method == "BATTERY":
+        img = raw_to_npy(args.f, args.sz, args.big_endian, args.type, 0.00, 0.05)
+        img = np.median(img,0)
+        
+        x1,x2,y1,y2 = detect_battery_rectangle(img)
+        
+        # crop the rectangle
+        img = img[y1:y2, x1:x2]
+        
+        # visualize cropped battery
+        img_viz = np.round((img - img.min()) / (img.max() - img.min()) * 255).astype(uint8)
+        cv2.imwrite("battery_crop.jpg", img_viz)
+        
+    elif method=="CELLS":
+        img3d = raw_to_npy(args.f, args.sz, args.big_endian, args.type, args.min_val, args.max_val)
+        print(img3d.shape, type(img3d), img3d.dtype)
+        img = np.median(img3d, 0) # z-projection, median or mean
+
+        extract_cells(img, nr_cells=18, gap_width=5, out_dir="patches", annot=None, viz=True)
 
     else:
         print(f"Method {method} not recognized")
