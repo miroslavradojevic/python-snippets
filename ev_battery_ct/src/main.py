@@ -178,10 +178,73 @@ def plot_images(*images):
     plt.subplots_adjust(left=0.03, bottom=0.03, right=0.97, top=0.97)
     plt.show()
 
-def detect_cells(img, gap_width=4, nr_cells=18):
+def detect_cells(img, gap_width=5, nr_cells=18):
+    # TODO check nr_cells  must be even numbers gap_width must be odd
+
     img_integral = cv2.integral(img)
     img_height, img_width = img.shape
     step = 1
+
+    x_out = []
+
+    nhood = int(round(img_width/nr_cells)*0.25)
+
+    # central division
+    score_optim = -inf
+    x_optim = None
+    for dx in range(-nhood, nhood, step):
+        x0 = img_width//2 + dx 
+        x1 = x0 - gap_width//2
+        x2 = x0 + gap_width//2
+        x11 = x1 - gap_width
+        x22 = x2 + gap_width
+        s0 = (img_integral[-1,x2]  + img_integral[0,x1]  - img_integral[0,x2]  - img_integral[-1,x1]) /float(gap_width*img_height)
+        s1 = (img_integral[-1,x1]  + img_integral[0,x11] - img_integral[0,x1]  - img_integral[-1,x11])/float(nhood*img_height)
+        s2 = (img_integral[-1,x22] + img_integral[0,x2]  - img_integral[0,x22] - img_integral[-1,x2])/float(nhood*img_height)
+        score = 0.5*(s1+s2)-s0
+        if score > score_optim:
+            score_optim = score
+            x_optim = x0
+            
+    x_out.append(x_optim)
+
+    x_left = x_right = x_optim
+
+    # expand from center towards right
+    for i in range(0, nr_cells//2): 
+        score_optim = -inf
+        x_optim = None
+        
+        for dx in range(-nhood, nhood, step):
+            x0 = x_right + int(round(img_width/nr_cells)) + dx
+            x1 = x0 - gap_width//2
+            x2 = x0 + gap_width//2
+            x11 = x1 - gap_width
+            x22 = x2 + gap_width
+
+            if x22 <= img_width:
+                s0 = (img_integral[-1,x2]  + img_integral[0,x1]  - img_integral[0,x2]  - img_integral[-1,x1]) /float(gap_width*img_height)
+                s1 = (img_integral[-1,x1]  + img_integral[0,x11] - img_integral[0,x1]  - img_integral[-1,x11])/float(nhood*img_height)
+                s2 = (img_integral[-1,x22] + img_integral[0,x2]  - img_integral[0,x22] - img_integral[-1,x2])/float(nhood*img_height)
+                score = 0.5*(s1+s2)-s0
+                if score > score_optim:
+                    score_optim = score
+                    x_optim = x0
+        
+        if x_optim is not None:
+            x_out.append(x_optim)
+            x_right = x_optim
+        else:
+            break # stop further with for-loop first time score was not found
+
+    # TODO: add expansion towards left
+
+
+    if True:
+        # TODO return sorted list
+        print(type(x_out))
+        return x_out
+
     x_ = [None] *  (nr_cells+1)
 
     div_min=int(round(img_width/nr_cells*0.8))
@@ -265,7 +328,7 @@ def viz_battery_division(img, x1, xvert):
         img_viz = cv2.line(img_viz, (x1+xi,0), (x1+xi,ih), (0, 255, 255), 2)
     cv2.imwrite("viz_battery_division.jpg", img_viz) 
 
-def extract_cells(img, nr_cells=18, gap_width=4, out_dir="patches", annot=None, viz=False):
+def extract_cells(img, nr_cells=18, gap_width=5, out_dir="patches", annot=None, viz=False):
         x1,x2,y1,y2 = detect_battery_rectangle(img)
         
         if viz:
@@ -275,7 +338,10 @@ def extract_cells(img, nr_cells=18, gap_width=4, out_dir="patches", annot=None, 
         
         x_vert = detect_cells(img_crop, gap_width, nr_cells)
 
-        print(x_vert, "\n", len(x_vert))
+        if x_vert is None:
+            return 
+
+        print(f"x_vert={x_vert} | {len(x_vert)}")
 
         viz_battery_division(img, x1, x_vert)
         
