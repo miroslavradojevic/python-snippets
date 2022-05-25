@@ -3,8 +3,22 @@ import tempfile
 from os import remove
 from os.path import abspath
 
-def my_func(val):
-    return val*2
+def raw_to_npy(raw_path, raw_size, raw_big_endian, raw_type, raw_min = None, raw_max = None):
+    # read the image
+    image = read_raw(binary_file_name=raw_path,
+        image_size=raw_size,
+        sitk_pixel_type=string_to_pixelType[raw_type],
+        big_endian=raw_big_endian)
+
+    image_npy = sitk.GetArrayFromImage(image)
+
+    if raw_min is not None:
+        image_npy[image_npy<raw_min] = raw_min
+    
+    if raw_max is not None:
+        image_npy[image_npy>raw_max] = raw_max
+
+    return image_npy
 
 string_to_pixelType = {"sitkUInt8": sitk.sitkUInt8,
     "sitkInt8": sitk.sitkInt8,
@@ -16,6 +30,27 @@ string_to_pixelType = {"sitkUInt8": sitk.sitkUInt8,
     "sitkInt64": sitk.sitkInt64,
     "sitkFloat32": sitk.sitkFloat32,
     "sitkFloat64": sitk.sitkFloat64}
+
+def raw_to_tif(raw_path, raw_size, raw_big_endian, raw_type, raw_min = None, raw_max = None):
+    # read the image
+    image = read_raw(binary_file_name=raw_path,
+        image_size=raw_size,
+        sitk_pixel_type=string_to_pixelType[raw_type],
+        big_endian=raw_big_endian)
+    
+    # crop
+    th = sitk.ThresholdImageFilter()
+    if raw_min is not None:
+        th.SetLower(raw_min)
+    if raw_max is not None:
+        th.SetUpper(raw_max)
+    if raw_min is not None or raw_max is not None:
+        image = th.Execute(image)
+
+    # save image as tif stack
+    out_file_name = splitext(args.f)[0] + f"_converted_crop_{raw_min}_{raw_max}.tif"
+    sitk.WriteImage(image, out_file_name)
+    print(f"Exported to\t{out_file_name}")
 
 def read_raw(binary_file_name, image_size, sitk_pixel_type, image_spacing=None, image_origin=None, big_endian=False):
     """

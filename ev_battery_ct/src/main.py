@@ -1,57 +1,17 @@
 #!/usr/bin/env python3
 import sys
 import numpy as np
+import pandas as pd
 import argparse
 import SimpleITK as sitk
 import cv2
 from numpy import uint8
-from read.image import string_to_pixelType, my_func, read_raw
-from os.path import exists, splitext, join
+from os.path import exists, splitext, join, basename
 from os import makedirs
 from time import strftime
 from math import inf
-from skimage.feature import hessian_matrix, hessian_matrix_eigvals
-import matplotlib.pyplot as plt
 
-def raw_to_npy(raw_path, raw_size, raw_big_endian, raw_type, raw_min = None, raw_max = None):
-    # Read the image
-    image = read_raw(binary_file_name=raw_path,
-        image_size=raw_size,
-        sitk_pixel_type=string_to_pixelType[raw_type],
-        big_endian=raw_big_endian)
-
-    image_npy = sitk.GetArrayFromImage(image)
-
-    if raw_min is not None:
-        image_npy[image_npy<raw_min] = raw_min
-    
-    if raw_max is not None:
-        image_npy[image_npy>raw_max] = raw_max
-
-    return image_npy
-
-def raw_to_tif(raw_path, raw_size, raw_big_endian, raw_type, raw_min = None, raw_max = None):
-    # Read the image
-    image = read_raw(binary_file_name=raw_path,
-        image_size=raw_size,
-        sitk_pixel_type=string_to_pixelType[raw_type],
-        big_endian=raw_big_endian)
-    
-    # print(f"{type(image)} H={image.GetHeight()}, W={image.GetWidth()}, D={image.GetDepth()}")
-
-    # crop
-    th = sitk.ThresholdImageFilter()
-    if raw_min is not None:
-        th.SetLower(raw_min)
-    if raw_max is not None:
-        th.SetUpper(raw_max)
-    if raw_min is not None or raw_max is not None:
-        image = th.Execute(image)
-
-    # save image as tif stack
-    out_file_name = splitext(args.f)[0] + f"_converted_crop_{raw_min}_{raw_max}.tif"
-    sitk.WriteImage(image, out_file_name)
-    print(f"Exported to\t{out_file_name}")
+from image.io import raw_to_npy
 
 def detect_battery_rectangle(img):
     img_integral = cv2.integral(img)
@@ -109,77 +69,10 @@ def detect_battery_rectangle(img):
 
     return x1_,x2_,y1_,y2_
     
-def detect_ridges(gray, sigma=1.0):
-    H_elems = hessian_matrix(gray, sigma=sigma, order='rc')
-    maxima_ridges, minima_ridges = hessian_matrix_eigvals(H_elems)
-    return maxima_ridges, minima_ridges
-
-def smooth(x,window_len=11,window='hanning'):
-    """smooth the data using a window with requested size.
-    
-    This method is based on the convolution of a scaled window with the signal.
-    The signal is prepared by introducing reflected copies of the signal 
-    (with the window size) in both ends so that transient parts are minimized
-    in the begining and end part of the output signal.
-    
-    input:
-        x: the input signal 
-        window_len: the dimension of the smoothing window; should be an odd integer
-        window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
-            flat window will produce a moving average smoothing.
-
-    output:
-        the smoothed signal
-        
-    example:
-
-    t=linspace(-2,2,0.1)
-    x=sin(t)+randn(len(t))*0.1
-    y=smooth(x)
-    
-    see also: 
-    
-    numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
-    scipy.signal.lfilter
- 
-    TODO: the window parameter could be the window itself if an array instead of a string
-    NOTE: length(output) != length(input), to correct this: return y[(window_len/2-1):-(window_len/2)] instead of just y.
-    """
-
-    if x.ndim != 1:
-        raise ValueError("smooth only accepts 1 dimension arrays.")
-
-    if x.size < window_len:
-        raise ValueError("Input vector needs to be bigger than window size.")
-
-    if window_len<3:
-        return x
-
-    if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
-        raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
-
-    s=np.r_[x[window_len-1:0:-1],x,x[-2:-window_len-1:-1]]
-    #print(len(s))
-    if window == 'flat': #moving average
-        w=np.ones(window_len,'d')
-    else:
-        w=eval('numpy.'+window+'(window_len)')
-
-    y=np.convolve(w/w.sum(),s,mode='valid')
-    return y
-
-def plot_images(*images):
-    images = list(images)
-    n = len(images)
-    fig, ax = plt.subplots(ncols=n, sharey=True)
-    for i, img in enumerate(images):
-        ax[i].imshow(img, cmap='gray')
-        ax[i].axis('off')
-    plt.subplots_adjust(left=0.03, bottom=0.03, right=0.97, top=0.97)
-    plt.show()
-
 def detect_cells(img, gap_width=7, nr_cells=18):
-    # TODO check nr_cells  must be even numbers gap_width must be odd
+    if (gap_width % 2) == 0 or (nr_cells % 2) == 1:
+        print(f"Gap width ({gap_width}) must be odd number and number of cells ({nr_cells}) must be even number")
+        return None
 
     img_integral = cv2.integral(img)
     img_height, img_width = img.shape
@@ -262,51 +155,10 @@ def detect_cells(img, gap_width=7, nr_cells=18):
         else:
             break # stop further with for-loop first time score was not found
 
-    print(type(x_out), x_out)
     x_out.sort()
     return x_out
 
-    x_ = [None] *  (nr_cells+1)
-
-    div_min=int(round(img_width/nr_cells*0.8))
-    div_max=int(round(img_width/nr_cells*1.2))
-    div_boundary = int(round(img_width/nr_cells*0.5))
-
-    for i in range(0, nr_cells+1):
-        score_max = -inf
-        if i==0:
-            for w in range(0, div_boundary, step):
-                x1 = w #+ 0
-                if x1 <= img_width:
-                    x2 = x1 + gap_width
-                    s1 = (img_integral[-1,x1] + img_integral[0,0] - img_integral[0,x1] - img_integral[-1,0])/float(x1*img_height)
-                    s2 = (img_integral[-1,x2] + img_integral[0,x1] - img_integral[0,x2] - img_integral[-1,x1])/float((x2-x1)*img_height)
-                    s3 = (img_integral[-1,-1] + img_integral[0,x2] - img_integral[0,-1] - img_integral[-1,x2])/float((img_width-x2)*img_height)
-                    score = 0.5 * (s1 + s3) - s2
-                    if score > score_max:
-                        score_max = score
-                        x_[i] = x1
-                else:
-                    break
-
-        else:
-            for w in range(div_min, div_max, step):
-                x1 = w + (x_[i-1]+gap_width) #((x_[i-1]+gap_width) if i!=0 else 0)
-                if x1 <= img_width:
-                    x2 = x1 + gap_width
-                    s1 = (img_integral[-1,x1] + img_integral[0,0] - img_integral[0,x1] - img_integral[-1,0])/float(x1*img_height)
-                    s2 = (img_integral[-1,x2] + img_integral[0,x1] - img_integral[0,x2] - img_integral[-1,x1])/float((x2-x1)*img_height)
-                    s3 = (img_integral[-1,-1] + img_integral[0,x2] - img_integral[0,-1] - img_integral[-1,x2])/float((img_width-x2)*img_height)
-                    score = 0.5 * (s1 + s3) - s2
-                    if score > score_max:
-                        score_max = score
-                        x_[i] = x1
-                else:
-                    break
-
-    return x_
-
-def extract_patches(img, cell_centroids, patch_width=64, patch_height=64):
+def extract_patches(img, cell_centroids, patch_width=64, patch_height=128, annot=None, prefix="patch"):
     if img.ndim!=3:
         print("Input image needs to be 3D image stack")
         return
@@ -314,9 +166,14 @@ def extract_patches(img, cell_centroids, patch_width=64, patch_height=64):
     if img.dtype != uint8:
         pass
 
-    out_dir = f"cell_patches_{patch_width}x{patch_height}"
-    if not exists(out_dir):
-        makedirs(out_dir) 
+    out_dir = f"patch_{patch_width}x{patch_height}"
+    train_cat = ["train", "validation"]
+    class_cat = ["adhesivelayer", "batterycell"]
+    for tc in train_cat:
+        for cc in class_cat:
+            d= join(out_dir, tc, cc)
+            if not exists(d):
+                makedirs(d)
 
     for layer in range(img.shape[0]):
         cell_cnt = 1
@@ -324,12 +181,28 @@ def extract_patches(img, cell_centroids, patch_width=64, patch_height=64):
             yp = int(round(cc[1]))
             xp = int(round(cc[0]))
             patch = img[layer, yp-patch_height//2:yp+patch_height//2, xp-patch_width//2:xp+patch_width//2]
-            cv2.imwrite(join(out_dir, f"patch_layer{layer+1}_cell{cell_cnt}.tif"), patch)
+            patch = ((patch / patch.max()) * 255).astype(np.uint8) # normalizes data in range 0 - 255
+            
+            # use cell_cnt and annot to say whether it is adhesive layer or not
+            layer_rng = np.squeeze(annot[np.where(annot[:,0]==cell_cnt), 1:])
+
+            is_adhesive = False
+            for row in layer_rng:
+                if row[0] <= (layer+1) <= row[1]:
+                    is_adhesive = True
+                    break
+
+            is_train = layer < img.shape[0]//2
+
+            out_path = join(out_dir, train_cat[0 if is_train else 1], class_cat[0 if is_adhesive else 1], f"{prefix}_layer{layer+1}_cell{cell_cnt}.png")
+            print(out_path)
+
+            cv2.imwrite(out_path, patch)
+            
             cell_cnt += 1
 
 def viz_battery_detection(img, x1, x2, y1, y2):
     # visualize battery boundaries
-    print(x1, x2, y1, y2)
     img_viz = np.round((img - img.min()) / (img.max() - img.min()) * 255).astype(uint8)
     img_viz = cv2.cvtColor(img_viz, cv2.COLOR_GRAY2RGB)
     ih,iw = img.shape
@@ -349,9 +222,14 @@ def viz_battery_division(img, x1, xvert):
         img_viz = cv2.line(img_viz, (x1+xi,0), (x1+xi,ih), (0, 255, 255), 2)
     cv2.imwrite("viz_battery_division.jpg", img_viz) 
 
+def viz_cell_centroids(img, ccs):
+    img_viz = np.round((img - img.min()) / (img.max() - img.min()) * 255).astype(uint8)
+    img_viz = cv2.cvtColor(img_viz, cv2.COLOR_GRAY2RGB)
+    for cc in ccs:
+        img_viz = cv2.circle(img_viz, tuple(map(int, cc)), 8, (0, 0, 255), -1)
+    cv2.imwrite("viz_cell_centroids.jpg", img_viz)
 
-
-def extract_cells(img, nr_cells=18, gap_width=5, out_dir="patches", annot=None, viz=False):
+def extract_cells(img, nr_cells=18, gap_width=5, viz=False):
         x1,x2,y1,y2 = detect_battery_rectangle(img)
         
         if viz:
@@ -362,33 +240,32 @@ def extract_cells(img, nr_cells=18, gap_width=5, out_dir="patches", annot=None, 
         x_vert = detect_cells(img_crop, gap_width, nr_cells)
 
         if x_vert is None:
-            return 
+            return None, None, None
 
-        print(f"x_vert={x_vert} | {len(x_vert)}")
-
-        viz_battery_division(img, x1, x_vert)
-        
-        if True:
-            return
+        if viz:
+            viz_battery_division(img, x1, x_vert)
 
         # extract cell centroids
         cell_centroids = []
-        for i in range(len(x_vert)):
-            x_right = x_vert[i]
-            x_left = x_vert[i-1] if i!=0 else 0
-            cell_centroids.append((x1+0.5*(x_left+x_right), 0.5*(y1+y2)))
-        cell_centroids.append((x1+0.5*((x2-x1)+x_right), 0.5*(y1+y2)))
+        cell_widths = []
+        for i in range(1, len(x_vert)):
+            x_r = x_vert[i]
+            x_l = x_vert[i-1]
+            cell_centroids.append((x1+0.5*(x_l+x_r), 0.5*(y1+y2)))
+            cell_widths.append(x_r - x_l)
 
-        print(f"cell_centroids=\n{cell_centroids}")
+        if viz:
+            viz_cell_centroids(img, cell_centroids)
+        
+        patch_width = int(round(np.mean(cell_widths)))
+        patch_height = int(round(y2 - y1))
+        
+        annot_path = args.f.replace(".raw", ".csv")
+        if exists(annot_path):
+            annot = pd.read_csv(annot_path, sep=',', header=0).to_numpy()
+            extract_patches(img3d, cell_centroids, patch_width, patch_height, annot, basename(args.f.replace(".raw", "")))
 
-        # visualize cells
-        for cc in cell_centroids:
-            img_viz = cv2.circle(img_viz, tuple(map(int, cc)), 8, (0, 255, 0), -1)
-        cv2.imwrite("cell_centroids.jpg", img_viz)
-
-        patch_width = 100
-        patch_height = y2 - y1
-        extract_patches(img3d, cell_centroids, patch_width, patch_height)
+        return cell_centroids, patch_width, patch_height
 
 if __name__=='__main__':
     psr = argparse.ArgumentParser(description='EV battery image analysis')
@@ -416,7 +293,7 @@ if __name__=='__main__':
     if method == "RAW2TIF":
         raw_to_tif(args.f, args.sz, args.big_endian, args.type)# , 0.00, 0.05      
     elif method == "RAW2NPY":
-        img = raw_to_npy(args.f, args.sz, args.big_endian, args.type)
+        img = raw_to_npy(args.f, args.sz, args.big_endian, args.type, 0.00, 0.05)
     elif method == "BATTERY":
         img = raw_to_npy(args.f, args.sz, args.big_endian, args.type, 0.00, 0.05)
         img = np.median(img,0)
@@ -432,10 +309,10 @@ if __name__=='__main__':
         
     elif method=="CELLS":
         img3d = raw_to_npy(args.f, args.sz, args.big_endian, args.type, args.min_val, args.max_val)
-        print(img3d.shape, type(img3d), img3d.dtype)
         img = np.mean(img3d, 0) # z-projection, median or mean
-
-        extract_cells(img, nr_cells=18, gap_width=5, out_dir="patches", annot=None, viz=True)
+        cell_centroids, patch_width, patch_height = extract_cells(img, nr_cells=18, gap_width=5, viz=True)
+        print(f"cell_centroids={cell_centroids}")
+        print(f"patch w={patch_width} h={patch_height}")
 
     else:
         print(f"Method {method} not recognized")
