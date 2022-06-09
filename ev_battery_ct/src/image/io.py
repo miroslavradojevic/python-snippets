@@ -11,6 +11,8 @@ def raw_to_npy(raw_path, raw_size, raw_big_endian, raw_type, raw_min = None, raw
         big_endian=raw_big_endian)
 
     image_npy = sitk.GetArrayFromImage(image)
+    print(image_npy.shape)
+    print(image_npy[0,0,0], image_npy[0,0,1])
 
     if raw_min is not None:
         image_npy[image_npy<raw_min] = raw_min
@@ -97,9 +99,13 @@ def read_raw(binary_file_name, image_size, sitk_pixel_type, image_spacing=None, 
 
     fp = tempfile.NamedTemporaryFile(suffix='.mhd', delete=False)
 
+    print(header)
+    print(type(header))
+
     # Not using the tempfile with a context manager and auto-delete because on windows we can't open the file a second time for ReadImage.
     fp.writelines(header)
     fp.close()
+    print(fp.name, type(fp.name))
     img = sitk.ReadImage(fp.name)
     remove(fp.name)
 
