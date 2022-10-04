@@ -14,13 +14,21 @@ print(f"-- testing openpyxl version {openpyxl.__version__}")
 
 script_path = os.path.realpath(__file__)
 script_dir = os.path.dirname(script_path)
-swc_dir = os.path.join(script_dir, "sheets")
+xls_dir = os.path.join(script_dir, "2022")
 
 # every file that ends with '.xlsx' under "sheets" dir
 # https://stackoverflow.com/questions/18394147/how-to-do-a-recursive-sub-folder-search-and-return-files-in-a-list
-files = glob.glob(swc_dir + '/**/*.xlsx', recursive=True)
+files = glob.glob(xls_dir + '/**/*.xlsx', recursive=True)
 
-total = 0
+entries = ["EVBS", "PIDXRAY", "R&D", "Overhead", "Public holiday", "Vacation (Holiday)"]
+total1 = {}
+for e in entries:
+    print(e)
+    total1[e] = 0
+
+print(total1)
+
+# total = 0 # create dictionary for each entry
 dd = {}
 
 for f in files:
@@ -34,6 +42,7 @@ for f in files:
         field_start = get_column_letter(sheet.min_column) + str(sheet.min_row)
         field_end = get_column_letter(sheet.max_column) + str(sheet.max_row)
         # print(field_start, '--', field_end)
+        # print(sheet['P1'].value)
 
         week_nr = None
         week_total = 0
@@ -41,15 +50,17 @@ for f in files:
         for rowOfCellObjects in sheet[field_start:field_end]:
             for cellObj in rowOfCellObjects:
                 if cellObj.value is not None:
-                    if cellObj.value == "S&O - AGV":
-                        coord_curr = cellObj.coordinate
-                        coord_next = coord_curr.replace(get_column_letter(cellObj.col_idx), get_column_letter(cellObj.col_idx+1))
-                        # print(coord_curr, coord_next, sheet[coord_next].value)
-                        total += sheet[coord_next].value
-                        week_total += sheet[coord_next].value
-                    elif str(cellObj.value).startswith("weeknr:"):
-                        week_nr = [int(s) for s in str(cellObj.value).split() if s.isdigit()]
-                        week_nr = week_nr[0]
+                    for entry in entries:
+                        if cellObj.value == entry:
+                            coord_curr = cellObj.coordinate
+                            coord_next = coord_curr.replace(get_column_letter(cellObj.col_idx), get_column_letter(cellObj.col_idx+1))
+                            # print(coord_curr, coord_next, sheet[coord_next].value)
+                            # total += sheet[coord_next].value
+                            total1[entry] += sheet[coord_next].value
+                            week_total += sheet[coord_next].value
+                        elif str(cellObj.value).startswith("weeknr:"):
+                            week_nr = [int(s) for s in str(cellObj.value).split() if s.isdigit()]
+                            week_nr = week_nr[0]
 
         print(f"Week {week_nr}: {week_total}")
         # dd["week"+str(week_nr)] = week_total
@@ -68,5 +79,5 @@ for f in files:
         print("######")
 
 pprint.pprint(dd)
-print(f"Total:{total}")
-
+# print(f"Total:{total}")
+print(total1)
