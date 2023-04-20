@@ -1,21 +1,30 @@
 import shutil
 import requests
 import os
-# from urllib3.exceptions import NewConnectionError
+import sys
+import argparse
 
-# Parse playlist for filenames with ending .ts and put them into the list ts_filenames
-with open('/home/miro/Downloads/201237597_.m3u8', 'r') as playlist:
-    ts_filenames = [line.rstrip() for line in playlist
-                    if line.rstrip().endswith('.ts')]
+if __name__=='__main__':
+    psr = argparse.ArgumentParser()
+    psr.add_argument("--m3u8", type=str, required=True)
+    args = psr.parse_args()
+
+    if not os.path.exists(args.m3u8):
+        sys.exit(f"File {args.m3u8} could not be found")
+
+    # Parse playlist for filenames with ending .ts and put them into the list
+    with open(args.m3u8, 'r') as playlist:
+        ts_filenames = [line.rstrip() for line in playlist if line.rstrip().endswith('.ts')]
 
     print(ts_filenames)
-
+    out_path = os.path.join(os.path.dirname(args.m3u8), os.path.basename(args.m3u8)+".ts")
+    print(out_path)
+    
     # open one ts_file from the list after another and append them to merged.ts
-    with open('201237597_.ts', 'wb') as merged:
+    with open(out_path, 'wb') as merged:
         for ts_file in ts_filenames:
             print(ts_file)
             try:
-                # resp = requests.get(url)
                 rawImage = requests.get(ts_file, stream=True)
                 print (rawImage.status_code)
                 filename = ts_file.split("/")[-1]
@@ -32,11 +41,10 @@ with open('/home/miro/Downloads/201237597_.m3u8', 'r') as playlist:
                 if os.path.isfile(filename):
                     os.remove(filename)
                 else:
-                    # If it fails, inform the user.
-                    print("Error: %s file not found" % filename)
+                    print(f"Error: {filename} file not found")
 
             except requests.exceptions.RequestException:
                 print(f'Invalid URL: "{ts_file}"')
                 # at this point, you can continue the loop to the next URL if you want
 
-            
+    print(out_path)
