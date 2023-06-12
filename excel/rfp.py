@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
+from openpyxl.styles import numbers
 import xlrd
 import glob
 import argparse
@@ -141,7 +142,7 @@ if __name__ == '__main__':
         for col, (key, value) in enumerate(r.items(), start=1):
             # find index of the column that has key value in the first row
             col_idx = None
-            for column_index, cell in enumerate(ws[1]):
+            for column_index, cell in enumerate(ws[1]): # first row
                 if cell.value == key:
                     col_idx = column_index + 1
                     break
@@ -149,5 +150,17 @@ if __name__ == '__main__':
                 column = get_column_letter(col_idx)
                 ws["{}{}".format(column, row+2)] = value
     
+    # 
+    col_idx = None
+    for col_index, cell in enumerate(ws[1]): # first row
+        if cell.value == "Accumulated paid Amount":
+            col_idx = col_index + 1
+            break
+    if col_idx is not None:
+        col_letter = ws.cell(row=1, column=col_index+1).column_letter
+        print(col_letter)
+        for cell in ws[col_letter]:
+            cell.number_format = numbers.FORMAT_NUMBER_00
+
     wb.save("output.xlsx")
     print("done")
