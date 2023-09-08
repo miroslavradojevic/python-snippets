@@ -20,7 +20,7 @@ xls_dir = os.path.join(script_dir, "2022")
 # https://stackoverflow.com/questions/18394147/how-to-do-a-recursive-sub-folder-search-and-return-files-in-a-list
 files = glob.glob(xls_dir + '/**/*.xlsx', recursive=True)
 
-entries = ["EVBS", "PIDXRAY", "R&D", "Overhead", "Public holiday", "Vacation (Holiday)"]
+entries = ["S&O - AGV", "EVBS", "PIDXRAY", "R&D", "Overhead", "Public holiday", "Vacation (Holiday)"]
 total1 = {}
 for e in entries:
     print(e)
